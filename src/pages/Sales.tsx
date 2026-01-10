@@ -193,14 +193,22 @@ const Sales = () => {
                 </Link>
               }
             >
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Técnico</p>
-                  <p className="font-medium text-foreground text-lg">{currentOrder.technician}</p>
+                  <p className="font-medium text-foreground">{currentOrder.technician}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Departamento</p>
+                  <p className="font-medium text-foreground">{currentOrder.department}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Proveedor</p>
+                  <p className="font-medium text-foreground">{currentOrder.supplierName || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Proyecto</p>
-                  <p className="font-medium text-foreground text-lg">{getProjectName(currentOrder.projectId)}</p>
+                  <p className="font-medium text-foreground">{getProjectName(currentOrder.projectId)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Estado</p>

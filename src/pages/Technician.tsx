@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useWarehouse } from "@/context/WarehouseContext";
+import { useWarehouse, Order } from "@/context/WarehouseContext";
 import { toast } from "sonner";
 import { Plus, Trash2, ShoppingCart, FileDown, AlertTriangle } from "lucide-react";
 import { generateToolRequestPdf } from "@/utils/generateToolRequestPdf";
@@ -19,10 +19,14 @@ interface RequestItem {
   currentStock: number;
 }
 
+const DEPARTMENTS: Order["department"][] = ["HVAC", "ELECTROMECANICO", "HERRERIA", "MAQUINARIA PESADA"];
+
 const Technician = () => {
   const { projects, inventory, createOrder, addStockAlert } = useWarehouse();
 
   const [technicianName, setTechnicianName] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState<Order["department"] | "">("");
+  const [supplierName, setSupplierName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
 
@@ -71,6 +75,10 @@ const Technician = () => {
       toast.error("Por favor ingrese el nombre del técnico");
       return;
     }
+    if (!selectedDepartment) {
+      toast.error("Por favor seleccione un departamento");
+      return;
+    }
     if (!selectedProjectId) {
       toast.error("Por favor seleccione un proyecto");
       return;
@@ -80,8 +88,8 @@ const Technician = () => {
       return;
     }
 
-    // Create order WITHOUT items (items are only saved in Sales)
-    const orNumber = createOrder(technicianName, parseInt(selectedProjectId));
+    // Create order with department and supplier
+    const orNumber = createOrder(technicianName, parseInt(selectedProjectId), selectedDepartment, supplierName);
 
     const project = projects.find(p => p.id === parseInt(selectedProjectId));
 
@@ -108,6 +116,8 @@ const Technician = () => {
     generateToolRequestPdf({
       orNumber,
       technician: technicianName,
+      department: selectedDepartment,
+      supplierName: supplierName || "N/A",
       projectId: parseInt(selectedProjectId),
       projectName: project?.name || "N/A",
       requestedItems: requestItems.map(item => ({
@@ -121,6 +131,8 @@ const Technician = () => {
 
     // Reset Form
     setTechnicianName("");
+    setSelectedDepartment("");
+    setSupplierName("");
     setSelectedProjectId("");
     setRequestItems([]);
   };
@@ -144,6 +156,32 @@ const Technician = () => {
                   placeholder="Ingrese su nombre"
                   value={technicianName}
                   onChange={(e) => setTechnicianName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select value={selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Order["department"])}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar Departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map(dept => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="supplierName">Nombre del Proveedor (Opcional)</Label>
+                <Input
+                  id="supplierName"
+                  placeholder="Ingrese nombre del proveedor"
+                  value={supplierName}
+                  onChange={(e) => setSupplierName(e.target.value)}
                 />
               </div>
 

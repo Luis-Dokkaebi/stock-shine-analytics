@@ -67,9 +67,14 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
   doc.text(order.technician.toUpperCase(), leftCol + 30, infoY + 7);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Proyecto:", leftCol, infoY + 14);
+  doc.text("Departamento:", leftCol, infoY + 14);
   doc.setFont("helvetica", "normal");
-  doc.text(`${order.projectId} - ${project?.name || "N/A"}`, leftCol + 30, infoY + 14);
+  doc.text(order.department.toUpperCase(), leftCol + 30, infoY + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Proyecto:", leftCol, infoY + 21);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${order.projectId} - ${project?.name || "N/A"}`, leftCol + 30, infoY + 21);
 
   // Right column
   doc.setFont("helvetica", "bold");
@@ -83,13 +88,18 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
   doc.text(currentDate.toLocaleTimeString(), rightCol + 25, infoY + 7);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Agente:", rightCol, infoY + 14);
+  doc.text("Proveedor:", rightCol, infoY + 14);
   doc.setFont("helvetica", "normal");
-  doc.text(agentDisplay.toUpperCase(), rightCol + 25, infoY + 14);
+  doc.text((order.supplierName || "N/A").toUpperCase(), rightCol + 25, infoY + 14);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Agente:", rightCol, infoY + 21);
+  doc.setFont("helvetica", "normal");
+  doc.text(agentDisplay.toUpperCase(), rightCol + 25, infoY + 21);
 
   // Divider line
   doc.setDrawColor(200, 200, 200);
-  doc.line(15, infoY + 20, 195, infoY + 20);
+  doc.line(15, infoY + 28, 195, infoY + 28);
 
   // Build table data from fulfillment logs to show all movements including removals
   const tableData: string[][] = [];
@@ -118,7 +128,7 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
   }, 0);
 
   autoTable(doc, {
-    startY: infoY + 25,
+    startY: infoY + 33,
     head: [["GPO", "SKU", "DESCRIPCIÓN", "CANT.", "PRECIO U.", "IMPORTE"]],
     body: tableData,
     theme: "striped",
