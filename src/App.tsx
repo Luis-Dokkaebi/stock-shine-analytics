@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Technician from "./pages/Technician";
 import OrderExitSlip from "./pages/OrderExitSlip";
 import Department from "./pages/Department";
+import PersonalControl from "./pages/PersonalControl";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/departments/:dept" element={<Department />} />
+            <Route path="/personal/:module" element={<PersonalControl />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
