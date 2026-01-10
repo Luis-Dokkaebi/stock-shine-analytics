@@ -4,31 +4,22 @@ import { Search, Filter, ArrowUpDown, Package, AlertTriangle, TrendingDown } fro
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const inventoryData = [
-  { id: 1, sku: "ELEC-001", nombre: "Monitor LED 24\"", categoria: "Electrónicos", cantidad: 45, costoUnit: 180, precioVenta: 299, rotacion: "alta", diasAlmacen: 12 },
-  { id: 2, sku: "HERR-015", nombre: "Taladro Industrial", categoria: "Herramientas", cantidad: 23, costoUnit: 95, precioVenta: 159, rotacion: "media", diasAlmacen: 35 },
-  { id: 3, sku: "MAT-089", nombre: "Cable Eléctrico 100m", categoria: "Materiales", cantidad: 150, costoUnit: 45, precioVenta: 79, rotacion: "alta", diasAlmacen: 8 },
-  { id: 4, sku: "EQUI-022", nombre: "Compresor de Aire", categoria: "Equipos", cantidad: 8, costoUnit: 450, precioVenta: 699, rotacion: "baja", diasAlmacen: 78 },
-  { id: 5, sku: "ELEC-045", nombre: "Teclado Mecánico", categoria: "Electrónicos", cantidad: 67, costoUnit: 55, precioVenta: 89, rotacion: "alta", diasAlmacen: 5 },
-  { id: 6, sku: "HERR-089", nombre: "Sierra Circular", categoria: "Herramientas", cantidad: 12, costoUnit: 220, precioVenta: 349, rotacion: "media", diasAlmacen: 42 },
-  { id: 7, sku: "MAT-156", nombre: "Tubería PVC 2\"", categoria: "Materiales", cantidad: 200, costoUnit: 12, precioVenta: 22, rotacion: "alta", diasAlmacen: 15 },
-  { id: 8, sku: "EQUI-011", nombre: "Generador Portátil", categoria: "Equipos", cantidad: 3, costoUnit: 890, precioVenta: 1299, rotacion: "baja", diasAlmacen: 120 },
-];
+import { useWarehouse } from "@/context/WarehouseContext";
 
 const rotacionBadge = {
-  alta: { variant: "default" as const, className: "bg-success/20 text-success border-success/30" },
-  media: { variant: "default" as const, className: "bg-warning/20 text-warning border-warning/30" },
-  baja: { variant: "default" as const, className: "bg-destructive/20 text-destructive border-destructive/30" },
+  high: { variant: "default" as const, className: "bg-success/20 text-success border-success/30" },
+  medium: { variant: "default" as const, className: "bg-warning/20 text-warning border-warning/30" },
+  low: { variant: "default" as const, className: "bg-destructive/20 text-destructive border-destructive/30" },
 };
 
 export function InventoryTable() {
   const [search, setSearch] = useState("");
+  const { inventory } = useWarehouse();
   
-  const filteredData = inventoryData.filter(item =>
-    item.nombre.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredData = inventory.filter(item =>
+    item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.sku.toLowerCase().includes(search.toLowerCase()) ||
-    item.categoria.toLowerCase().includes(search.toLowerCase())
+    item.category.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -56,13 +47,13 @@ export function InventoryTable() {
           <thead className="bg-secondary/50">
             <tr>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">SKU</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Producto</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Categoría</th>
-              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Cantidad</th>
-              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Costo Unit.</th>
-              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Precio Venta</th>
-              <th className="text-center p-4 text-sm font-medium text-muted-foreground">Rotación</th>
-              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Días en Almacén</th>
+              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Product</th>
+              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
+              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Stock</th>
+              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Unit Cost</th>
+              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Sale Price</th>
+              <th className="text-center p-4 text-sm font-medium text-muted-foreground">Rotation</th>
+              <th className="text-right p-4 text-sm font-medium text-muted-foreground">Days in Whs</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -82,24 +73,24 @@ export function InventoryTable() {
                     <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                       <Package className="w-5 h-5 text-muted-foreground" />
                     </div>
-                    <span className="font-medium">{item.nombre}</span>
+                    <span className="font-medium">{item.name}</span>
                   </div>
                 </td>
-                <td className="p-4 text-muted-foreground">{item.categoria}</td>
-                <td className="p-4 text-right font-medium">{item.cantidad}</td>
-                <td className="p-4 text-right text-muted-foreground">${item.costoUnit.toLocaleString()}</td>
-                <td className="p-4 text-right font-medium text-primary">${item.precioVenta.toLocaleString()}</td>
+                <td className="p-4 text-muted-foreground">{item.category}</td>
+                <td className="p-4 text-right font-medium">{item.stock}</td>
+                <td className="p-4 text-right text-muted-foreground">${item.unitCost.toLocaleString()}</td>
+                <td className="p-4 text-right font-medium text-primary">${item.salePrice.toLocaleString()}</td>
                 <td className="p-4 text-center">
-                  <Badge className={rotacionBadge[item.rotacion].className}>
-                    {item.rotacion === "alta" ? "Alta" : item.rotacion === "media" ? "Media" : "Baja"}
+                  <Badge className={rotacionBadge[item.rotation].className}>
+                    {item.rotation.charAt(0).toUpperCase() + item.rotation.slice(1)}
                   </Badge>
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <span className={item.diasAlmacen > 60 ? "text-destructive" : "text-muted-foreground"}>
-                      {item.diasAlmacen} días
+                    <span className={item.daysInWarehouse > 60 ? "text-destructive" : "text-muted-foreground"}>
+                      {item.daysInWarehouse} days
                     </span>
-                    {item.diasAlmacen > 60 && (
+                    {item.daysInWarehouse > 60 && (
                       <AlertTriangle className="w-4 h-4 text-destructive" />
                     )}
                   </div>
@@ -112,19 +103,19 @@ export function InventoryTable() {
 
       {/* Summary */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Mostrando {filteredData.length} de {inventoryData.length} productos</span>
+        <span>Showing {filteredData.length} of {inventory.length} products</span>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-success" />
-            Alta rotación: {inventoryData.filter(i => i.rotacion === "alta").length}
+            High: {inventory.filter(i => i.rotation === "high").length}
           </span>
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-warning" />
-            Media: {inventoryData.filter(i => i.rotacion === "media").length}
+            Medium: {inventory.filter(i => i.rotation === "medium").length}
           </span>
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-destructive" />
-            Baja: {inventoryData.filter(i => i.rotacion === "baja").length}
+            Low: {inventory.filter(i => i.rotation === "low").length}
           </span>
         </div>
       </div>
