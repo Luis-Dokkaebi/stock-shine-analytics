@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Technician from "./pages/Technician";
 import OrderExitSlip from "./pages/OrderExitSlip";
+import Department from "./pages/Department";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/costs" element={<Costs />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/departments/:dept" element={<Department />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
