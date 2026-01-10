@@ -1,27 +1,29 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, AlertCircle, ShoppingCart, Truck } from "lucide-react";
-import { useWarehouse, Order } from "@/context/WarehouseContext";
+import { Search, CheckCircle, AlertCircle, ShoppingCart, Truck, History } from "lucide-react";
+import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
 import { animate } from "animejs";
 
 const Sales = () => {
-  const { findOrder, inventory, fulfillOrderPart } = useWarehouse();
+  const { orders, inventory, fulfillOrderPart, projects } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [selectedOrNumber, setSelectedOrNumber] = useState("");
   const [searchError, setSearchError] = useState("");
 
+  const currentOrder = orders.find(o => o.or_number.toLowerCase() === selectedOrNumber.toLowerCase()) || null;
+
   const handleSearch = () => {
-    const order = findOrder(searchQuery);
-    if (order) {
-      setCurrentOrder(order);
+    const orderExists = orders.some(o => o.or_number.toLowerCase() === searchQuery.trim().toLowerCase());
+    if (orderExists) {
+      setSelectedOrNumber(searchQuery.trim());
       setSearchError("");
     } else {
-      setCurrentOrder(null);
+      setSelectedOrNumber("");
       setSearchError("Order Reference (O.R.) not found.");
     }
   };
@@ -35,6 +37,11 @@ const Sales = () => {
       partName: part.name,
       sku: part.sku
     };
+  };
+
+  const getProjectName = (id: number) => {
+    const p = projects.find(proj => proj.id === id);
+    return p ? p.name : "Unknown Project";
   };
 
   const handleRequisition = (partId: number, requiredQty: number, rowId: string) => {
@@ -95,12 +102,22 @@ const Sales = () => {
         {/* Order Details */}
         {currentOrder && (
           <DashboardCard title={`Order Details: ${currentOrder.or_number}`}>
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground">Technician: <span className="font-medium text-foreground">{currentOrder.technician}</span></p>
-              <p className="text-sm text-muted-foreground">Status: <span className="font-medium text-foreground uppercase">{currentOrder.status}</span></p>
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Technician</p>
+                <p className="font-medium text-foreground text-lg">{currentOrder.technician}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Project</p>
+                <p className="font-medium text-foreground text-lg">{getProjectName(currentOrder.projectId)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <span className="font-medium text-foreground uppercase px-2 py-1 bg-secondary rounded text-xs">{currentOrder.status}</span>
+              </div>
             </div>
 
-            <div className="rounded-md border">
+            <div className="rounded-md border mb-8">
               <div className="grid grid-cols-12 gap-4 p-4 bg-secondary/50 font-medium text-sm">
                 <div className="col-span-4">Part</div>
                 <div className="col-span-2 text-center">Required</div>
@@ -170,6 +187,38 @@ const Sales = () => {
                 })}
               </div>
             </div>
+
+            {/* Fulfillment History Logs */}
+            {currentOrder.fulfillmentLogs.length > 0 && (
+              <div className="mt-8 border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <History className="w-5 h-5" /> Fulfillment History
+                </h3>
+                <div className="rounded-md border bg-muted/20">
+                    <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/30 text-xs font-medium uppercase text-muted-foreground">
+                        <div className="col-span-4">Item</div>
+                        <div className="col-span-2 text-center">Qty Assigned</div>
+                        <div className="col-span-3">Assigned By</div>
+                        <div className="col-span-3 text-right">Time</div>
+                    </div>
+                    <div className="divide-y">
+                        {currentOrder.fulfillmentLogs.map(log => {
+                            const part = inventory.find(p => p.id === log.partId);
+                            return (
+                                <div key={log.id} className="grid grid-cols-12 gap-4 p-3 text-sm">
+                                    <div className="col-span-4 font-medium">{part?.name || "Unknown Part"}</div>
+                                    <div className="col-span-2 text-center">{log.quantity}</div>
+                                    <div className="col-span-3 text-muted-foreground">{log.assignedBy}</div>
+                                    <div className="col-span-3 text-right text-muted-foreground font-mono text-xs">
+                                      {log.assignedAt}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+              </div>
+            )}
           </DashboardCard>
         )}
       </div>

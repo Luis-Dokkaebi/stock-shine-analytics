@@ -7,12 +7,14 @@ import {
   DollarSign, 
   Settings,
   BarChart3,
-  Warehouse
+  Warehouse,
+  HardHat
 } from "lucide-react";
 import holtmontLogo from "@/assets/holtmont-logo.png";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: HardHat, label: "Zona Técnica", path: "/technician" },
   { icon: Package, label: "Inventario", path: "/inventory" },
   { icon: TrendingUp, label: "Análisis de Ventas", path: "/sales" },
   { icon: DollarSign, label: "Costos Operativos", path: "/costs" },
