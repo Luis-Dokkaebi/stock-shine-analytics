@@ -52,7 +52,8 @@ interface WarehouseContextType {
   fulfillOrderPart: (orderId: number, partId: number, quantity: number, assignedBy?: string) => void;
   createPart: (part: Omit<Part, "id">) => void;
   findOrder: (orNumber: string) => Order | undefined;
-  createOrder: (technician: string, projectId: number, items: { partId: number; quantity: number }[]) => string;
+  createOrder: (technician: string, projectId: number) => string;
+  addItemToOrder: (orderId: number, partId: number, quantity: number, assignedBy?: string) => boolean;
 }
 
 const WarehouseContext = createContext<WarehouseContextType | undefined>(undefined);
@@ -160,7 +161,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     return orders.find((o) => o.or_number.toLowerCase() === orNumber.toLowerCase());
   };
 
-  const createOrder = (technician: string, projectId: number, items: { partId: number; quantity: number }[]) => {
+  const createOrder = (technician: string, projectId: number) => {
     const lastOrder = orders[orders.length - 1];
     let nextNum = 1;
     if (lastOrder) {
@@ -173,12 +174,12 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     const orNumber = `OR-${year}-${nextNum.toString().padStart(3, "0")}`;
 
     const newOrder: Order = {
-      id: Math.floor(Math.random() * 100000) + 1000, // Simple random ID
+      id: Math.floor(Math.random() * 100000) + 1000,
       or_number: orNumber,
       technician,
       projectId,
       status: "open",
-      items: items.map(i => ({ partId: i.partId, quantityRequired: i.quantity, quantityFulfilled: 0 })),
+      items: [], // Items are NOT saved here - only added via Sales
       fulfillmentLogs: []
     };
 
@@ -186,8 +187,55 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     return orNumber;
   };
 
+  const addItemToOrder = (orderId: number, partId: number, quantity: number, assignedBy: string = "Almacén User") => {
+    const part = inventory.find(p => p.id === partId);
+    if (!part || part.stock < quantity) {
+      return false; // Not enough stock
+    }
+
+    // Deduct from inventory
+    deductStock(partId, quantity);
+
+    // Add item to order and log
+    const now = new Date();
+    const newLog: FulfillmentLog = {
+      id: crypto.randomUUID(),
+      partId,
+      quantity,
+      assignedBy,
+      assignedAt: now.toLocaleString(),
+      timestamp: now.getTime(),
+    };
+
+    setOrders(prevOrders =>
+      prevOrders.map(order => {
+        if (order.id !== orderId) return order;
+
+        const existingItem = order.items.find(item => item.partId === partId);
+        let updatedItems;
+        if (existingItem) {
+          updatedItems = order.items.map(item =>
+            item.partId === partId
+              ? { ...item, quantityRequired: item.quantityRequired + quantity, quantityFulfilled: item.quantityFulfilled + quantity }
+              : item
+          );
+        } else {
+          updatedItems = [...order.items, { partId, quantityRequired: quantity, quantityFulfilled: quantity }];
+        }
+
+        return {
+          ...order,
+          items: updatedItems,
+          fulfillmentLogs: [...order.fulfillmentLogs, newLog],
+        };
+      })
+    );
+
+    return true;
+  };
+
   return (
-    <WarehouseContext.Provider value={{ inventory, orders, projects, addStock, deductStock, fulfillOrderPart, createPart, findOrder, createOrder }}>
+    <WarehouseContext.Provider value={{ inventory, orders, projects, addStock, deductStock, fulfillOrderPart, createPart, findOrder, createOrder, addItemToOrder }}>
       {children}
     </WarehouseContext.Provider>
   );
