@@ -12,6 +12,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Technician from "./pages/Technician";
+import OrderExitSlip from "./pages/OrderExitSlip";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/technician" element={<Technician />} />
+            <Route path="/print-order/:orNumber" element={<OrderExitSlip />} />
             <Route path="/costs" element={<Costs />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
