@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, CheckCircle, Plus, History, Printer, Package, FileDown, Trash2, AlertTriangle, X } from "lucide-react";
-import { useWarehouse } from "@/context/WarehouseContext";
+import { Search, CheckCircle, Plus, Package, FileDown, Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
 import { generateOrderPdf } from "@/utils/generateOrderPdf";
 import {
   AlertDialog,
@@ -22,9 +20,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useOrders, useAddItemToOrder, useRemoveItemFromOrder, OrderWithDetails } from "@/hooks/useOrders";
+import { useParts } from "@/hooks/useParts";
+import { useProjects } from "@/hooks/useProjects";
+import { useUnresolvedStockAlerts, useResolveStockAlert } from "@/hooks/useStockAlerts";
+import { supabase } from "@/integrations/supabase/client";
 
 const Sales = () => {
-  const { orders, inventory, addItemToOrder, removeItemFromOrder, projects, stockAlerts, resolveStockAlert } = useWarehouse();
+  const { data: orders = [], isLoading: ordersLoading, refetch: refetchOrders } = useOrders();
+  const { data: inventory = [], isLoading: partsLoading } = useParts();
+  const { data: projects = [] } = useProjects();
+  const { data: unresolvedAlerts = [] } = useUnresolvedStockAlerts();
+  const addItemMutation = useAddItemToOrder();
+  const removeItemMutation = useRemoveItemFromOrder();
+  const resolveAlertMutation = useResolveStockAlert();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrNumber, setSelectedOrNumber] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -35,14 +45,29 @@ const Sales = () => {
 
   const currentOrder = orders.find(o => o.or_number.toLowerCase() === selectedOrNumber.toLowerCase()) || null;
   
-  // Filter unresolved alerts
-  const unresolvedAlerts = stockAlerts.filter(a => !a.resolved);
-
   // Get pending orders (orders with no items yet - waiting to be processed)
-  const pendingOrders = orders.filter(o => o.status === "open" && o.items.length === 0);
+  const pendingOrders = orders.filter(o => o.status === "open" && (!o.items || o.items.length === 0));
   
   // Get orders in progress (orders with some items)
-  const ordersInProgress = orders.filter(o => o.status === "open" && o.items.length > 0);
+  const ordersInProgress = orders.filter(o => o.status === "open" && o.items && o.items.length > 0);
+
+  // Subscribe to realtime updates for orders
+  useEffect(() => {
+    const channel = supabase
+      .channel("orders-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          refetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchOrders]);
 
   const handleSearch = () => {
     const orderExists = orders.some(o => o.or_number.toLowerCase() === searchQuery.trim().toLowerCase());
@@ -55,22 +80,23 @@ const Sales = () => {
     }
   };
 
-  const getPartInfo = (partId: number) => {
+  const getPartInfo = (partId: string) => {
     const part = inventory.find((p) => p.id === partId);
-    if (!part) return { stock: 0, partName: "Unknown", sku: "N/A" };
+    if (!part) return { stock: 0, partName: "Unknown", sku: "N/A", salePrice: 0 };
     return {
       stock: part.stock,
       partName: part.name,
-      sku: part.sku
+      sku: part.sku,
+      salePrice: part.sale_price
     };
   };
 
-  const getProjectName = (id: number) => {
+  const getProjectName = (id: string) => {
     const p = projects.find(proj => proj.id === id);
     return p ? p.name : "Proyecto Desconocido";
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!currentOrder) return;
     if (!selectedPartId) {
       toast.error("Seleccione un item");
@@ -81,7 +107,7 @@ const Sales = () => {
       return;
     }
 
-    const part = inventory.find(p => p.id === parseInt(selectedPartId));
+    const part = inventory.find(p => p.id === selectedPartId);
     if (!part) {
       toast.error("Item no encontrado");
       return;
@@ -92,29 +118,89 @@ const Sales = () => {
       return;
     }
 
-    const success = addItemToOrder(currentOrder.id, parseInt(selectedPartId), quantity, "Almacén User");
-
-    if (success) {
+    try {
+      await addItemMutation.mutateAsync({
+        orderId: currentOrder.id,
+        partId: selectedPartId,
+        quantity,
+        assignedBy: "Almacén User",
+      });
       toast.success(`${quantity}x ${part.name} agregado a la orden`);
       setSelectedPartId("");
       setQuantity(1);
-    } else {
+    } catch (error) {
       toast.error("Error al agregar item. Verifique el stock.");
     }
   };
 
-  const handleRemoveItem = (partId: number, currentQty: number) => {
+  const handleRemoveItem = async (partId: string, currentQty: number) => {
     if (!currentOrder) return;
     
     const part = inventory.find(p => p.id === partId);
-    const success = removeItemFromOrder(currentOrder.id, partId, currentQty, "Almacén User");
     
-    if (success) {
+    try {
+      await removeItemMutation.mutateAsync({
+        orderId: currentOrder.id,
+        partId,
+        quantity: currentQty,
+        removedBy: "Almacén User",
+      });
       toast.success(`${part?.name || "Item"} eliminado de la orden (stock devuelto)`);
-    } else {
+    } catch (error) {
       toast.error("Error al eliminar item");
     }
   };
+
+  const handleDownloadPdf = () => {
+    if (!currentOrder) return;
+    
+    // Transform data for PDF
+    const pdfOrder = {
+      or_number: currentOrder.or_number,
+      technician: currentOrder.technician,
+      department: currentOrder.department,
+      supplierName: currentOrder.supplier_name || "",
+      projectId: currentOrder.project_id,
+      status: currentOrder.status,
+      items: currentOrder.items || [],
+      fulfillmentLogs: (currentOrder.fulfillmentLogs || []).map(log => ({
+        ...log,
+        type: log.operation_type as "add" | "remove",
+        assignedAt: new Date(log.assigned_at).toLocaleString(),
+      })),
+    };
+
+    const pdfInventory = inventory.map(p => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      category: p.category,
+      salePrice: p.sale_price,
+    }));
+
+    const pdfProjects = projects.map(p => ({
+      id: p.id,
+      name: p.name,
+    }));
+
+    generateOrderPdf({ 
+      order: pdfOrder as any, 
+      inventory: pdfInventory as any, 
+      projects: pdfProjects as any 
+    });
+  };
+
+  const isLoading = ordersLoading || partsLoading;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -154,9 +240,9 @@ const Sales = () => {
                   </div>
                   <p className="text-sm font-medium">{order.technician}</p>
                   <p className="text-xs text-muted-foreground">{order.department}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.projectId)}</p>
-                  {order.supplierName && (
-                    <p className="text-xs text-muted-foreground">Proveedor: {order.supplierName}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.project_id)}</p>
+                  {order.supplier_name && (
+                    <p className="text-xs text-muted-foreground">Proveedor: {order.supplier_name}</p>
                   )}
                 </div>
               ))}
@@ -190,16 +276,17 @@ const Sales = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-green-600">{order.or_number}</span>
-                    <span className="text-xs px-2 py-1 bg-green-500/20 text-green-600 rounded">{order.items.length} ITEMS</span>
+                    <span className="text-xs px-2 py-1 bg-green-500/20 text-green-600 rounded">{order.items?.length || 0} ITEMS</span>
                   </div>
                   <p className="text-sm font-medium">{order.technician}</p>
                   <p className="text-xs text-muted-foreground">{order.department}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.projectId)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.project_id)}</p>
                 </div>
               ))}
             </div>
           </DashboardCard>
         )}
+
         {/* Stock Alerts Section */}
         {unresolvedAlerts.length > 0 && (
           <DashboardCard 
@@ -222,18 +309,19 @@ const Sales = () => {
                 >
                   <div className="flex-1">
                     <p className="font-medium text-foreground">
-                      {alert.partName} <span className="text-muted-foreground font-mono text-xs">({alert.sku})</span>
+                      {alert.part_name} <span className="text-muted-foreground font-mono text-xs">({alert.sku})</span>
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Solicitado: {alert.requestedQuantity} unidades | O.T.: {alert.orNumber} | Técnico: {alert.technician}
+                      Solicitado: {alert.requested_quantity} unidades | O.T.: {alert.or_number} | Técnico: {alert.technician}
                     </p>
-                    <p className="text-xs text-muted-foreground">{alert.createdAt}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString()}</p>
                   </div>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => resolveStockAlert(alert.id)}
+                    onClick={() => resolveAlertMutation.mutate(alert.id)}
                     className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                    disabled={resolveAlertMutation.isPending}
                   >
                     <X className="w-4 h-4 mr-1" /> Marcar Resuelta
                   </Button>
@@ -249,7 +337,7 @@ const Sales = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Ingrese número de O.T. (ej: OR-2024-001)"
+                placeholder="Ingrese número de O.T. (ej: OR-2026-001)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -264,17 +352,7 @@ const Sales = () => {
         {/* Order Details */}
         {currentOrder && (
           <>
-            <DashboardCard
-              title={`Orden de Trabajo: ${currentOrder.or_number}`}
-              action={
-                <Link to={`/print-order/${currentOrder.or_number}`} target="_blank">
-                  <Button variant="outline" size="sm">
-                    <Printer className="w-4 h-4 mr-2" />
-                    Imprimir Remisión
-                  </Button>
-                </Link>
-              }
-            >
+            <DashboardCard title={`Orden de Trabajo: ${currentOrder.or_number}`}>
               <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Técnico</p>
@@ -286,11 +364,11 @@ const Sales = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Proveedor</p>
-                  <p className="font-medium text-foreground">{currentOrder.supplierName || "N/A"}</p>
+                  <p className="font-medium text-foreground">{currentOrder.supplier_name || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Proyecto</p>
-                  <p className="font-medium text-foreground">{getProjectName(currentOrder.projectId)}</p>
+                  <p className="font-medium text-foreground">{getProjectName(currentOrder.project_id)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Estado</p>
@@ -313,7 +391,7 @@ const Sales = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {inventory.map(part => (
-                        <SelectItem key={part.id} value={part.id.toString()} disabled={part.stock === 0}>
+                        <SelectItem key={part.id} value={part.id} disabled={part.stock === 0}>
                           {part.name} - Stock: {part.stock} {part.stock === 0 && "(Sin stock)"}
                         </SelectItem>
                       ))}
@@ -331,8 +409,17 @@ const Sales = () => {
                   />
                 </div>
 
-                <Button onClick={handleAddItem} className="bg-green-600 hover:bg-green-700">
-                  <Plus className="w-4 h-4 mr-2" /> Agregar a Orden
+                <Button 
+                  onClick={handleAddItem} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={addItemMutation.isPending}
+                >
+                  {addItemMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )}
+                  Agregar a Orden
                 </Button>
               </div>
             </DashboardCard>
@@ -341,9 +428,9 @@ const Sales = () => {
             <DashboardCard 
               title="Items Entregados"
               action={
-                currentOrder.items.length > 0 ? (
+                currentOrder.items && currentOrder.items.length > 0 ? (
                   <Button 
-                    onClick={() => generateOrderPdf({ order: currentOrder, inventory, projects })}
+                    onClick={handleDownloadPdf}
                     className="bg-primary hover:bg-primary/90"
                   >
                     <FileDown className="w-4 h-4 mr-2" />
@@ -352,7 +439,7 @@ const Sales = () => {
                 ) : null
               }
             >
-              {currentOrder.items.length === 0 ? (
+              {!currentOrder.items || currentOrder.items.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
                   <p>No hay items registrados en esta orden.</p>
@@ -370,9 +457,9 @@ const Sales = () => {
 
                   <div className="divide-y">
                     {currentOrder.items.map((item) => {
-                      const { partName, sku } = getPartInfo(item.partId);
+                      const { partName, sku } = getPartInfo(item.part_id);
                       return (
-                        <div key={item.partId} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
+                        <div key={item.id} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
                           <div className="col-span-4">
                             <p className="font-medium">{partName}</p>
                           </div>
@@ -380,7 +467,7 @@ const Sales = () => {
                             <p className="text-xs text-muted-foreground font-mono">{sku}</p>
                           </div>
                           <div className="col-span-2 text-center font-medium">
-                            {item.quantityFulfilled}
+                            {item.quantity_fulfilled}
                           </div>
                           <div className="col-span-2 flex justify-center">
                             <div className="flex items-center gap-2 text-green-500 font-medium">
@@ -398,14 +485,14 @@ const Sales = () => {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>¿Eliminar herramienta?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Esta acción eliminará <strong>{item.quantityFulfilled}x {partName}</strong> de la orden.
+                                    Esta acción eliminará <strong>{item.quantity_fulfilled}x {partName}</strong> de la orden.
                                     El stock será devuelto al inventario y quedará registrado en el historial y en el PDF con cantidad negativa.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                   <AlertDialogAction 
-                                    onClick={() => handleRemoveItem(item.partId, item.quantityFulfilled)}
+                                    onClick={() => handleRemoveItem(item.part_id, item.quantity_fulfilled)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
                                     Eliminar
@@ -423,7 +510,7 @@ const Sales = () => {
             </DashboardCard>
 
             {/* Fulfillment History Logs */}
-            {currentOrder.fulfillmentLogs.length > 0 && (
+            {currentOrder.fulfillmentLogs && currentOrder.fulfillmentLogs.length > 0 && (
               <DashboardCard title="Historial de Movimientos">
                 <div className="rounded-md border bg-muted/20">
                   <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/30 text-xs font-medium uppercase text-muted-foreground">
@@ -435,8 +522,8 @@ const Sales = () => {
                   </div>
                   <div className="divide-y">
                     {currentOrder.fulfillmentLogs.map(log => {
-                      const part = inventory.find(p => p.id === log.partId);
-                      const isRemoval = log.type === "remove" || log.quantity < 0;
+                      const part = inventory.find(p => p.id === log.part_id);
+                      const isRemoval = log.operation_type === "remove" || log.quantity < 0;
                       return (
                         <div 
                           key={log.id} 
@@ -453,9 +540,9 @@ const Sales = () => {
                               <span className="text-green-600 text-xs font-medium">AGREGADO</span>
                             )}
                           </div>
-                          <div className="col-span-2 text-muted-foreground">{log.assignedBy}</div>
+                          <div className="col-span-2 text-muted-foreground">{log.assigned_by}</div>
                           <div className="col-span-2 text-right text-muted-foreground font-mono text-xs">
-                            {log.assignedAt}
+                            {new Date(log.assigned_at).toLocaleString()}
                           </div>
                         </div>
                       );

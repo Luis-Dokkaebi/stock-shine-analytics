@@ -6,26 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useWarehouse, Order } from "@/context/WarehouseContext";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingCart, FileDown, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, FileDown, AlertTriangle, Loader2 } from "lucide-react";
 import { generateToolRequestPdf } from "@/utils/generateToolRequestPdf";
+import { useProjects } from "@/hooks/useProjects";
+import { useParts } from "@/hooks/useParts";
+import { useCreateOrder, DbOrder } from "@/hooks/useOrders";
+import { useCreateStockAlert } from "@/hooks/useStockAlerts";
 
 interface RequestItem {
-  partId: number;
+  partId: string;
   quantity: number;
   name: string;
   sku: string;
   currentStock: number;
 }
 
-const DEPARTMENTS: Order["department"][] = ["HVAC", "ELECTROMECANICO", "HERRERIA", "MAQUINARIA PESADA"];
+type Department = "HVAC" | "ELECTROMECANICO" | "HERRERIA" | "MAQUINARIA PESADA";
+const DEPARTMENTS: Department[] = ["HVAC", "ELECTROMECANICO", "HERRERIA", "MAQUINARIA PESADA"];
 
 const Technician = () => {
-  const { projects, inventory, createOrder, addStockAlert } = useWarehouse();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const { data: inventory = [], isLoading: partsLoading } = useParts();
+  const createOrder = useCreateOrder();
+  const createStockAlert = useCreateStockAlert();
 
   const [technicianName, setTechnicianName] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState<Order["department"] | "">("");
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | "">("");
   const [supplierName, setSupplierName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [requestItems, setRequestItems] = useState<RequestItem[]>([]);
@@ -37,7 +44,7 @@ const Technician = () => {
   const handleAddToRequest = () => {
     if (!selectedPartId) return;
 
-    const part = inventory.find(p => p.id === parseInt(selectedPartId));
+    const part = inventory.find(p => p.id === selectedPartId);
     if (!part) return;
 
     if (quantity <= 0) {
@@ -63,14 +70,14 @@ const Technician = () => {
     toast.success("Item agregado a la solicitud");
   };
 
-  const removeFromRequest = (partId: number) => {
+  const removeFromRequest = (partId: string) => {
     setRequestItems(prev => prev.filter(item => item.partId !== partId));
   };
 
   // Check for items with insufficient stock
   const itemsWithLowStock = requestItems.filter(item => item.currentStock < item.quantity);
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (!technicianName.trim()) {
       toast.error("Por favor ingrese el nombre del técnico");
       return;
@@ -88,54 +95,75 @@ const Technician = () => {
       return;
     }
 
-    // Create order with department and supplier
-    const orNumber = createOrder(technicianName, parseInt(selectedProjectId), selectedDepartment, supplierName);
-
-    const project = projects.find(p => p.id === parseInt(selectedProjectId));
-
-    // Create stock alerts for items with insufficient stock
-    itemsWithLowStock.forEach(item => {
-      addStockAlert({
-        partId: item.partId,
-        partName: item.name,
-        sku: item.sku,
-        requestedQuantity: item.quantity,
-        orNumber: orNumber,
+    try {
+      // Create order in database
+      const newOrder = await createOrder.mutateAsync({
         technician: technicianName,
+        department: selectedDepartment,
+        supplierName: supplierName,
+        projectId: selectedProjectId,
       });
-    });
 
-    if (itemsWithLowStock.length > 0) {
-      toast.warning(
-        `Se crearon ${itemsWithLowStock.length} alertas de stock insuficiente. El almacén ha sido notificado.`,
-        { duration: 5000 }
-      );
+      const project = projects.find(p => p.id === selectedProjectId);
+
+      // Create stock alerts for items with insufficient stock
+      for (const item of itemsWithLowStock) {
+        await createStockAlert.mutateAsync({
+          partId: item.partId,
+          partName: item.name,
+          sku: item.sku,
+          requestedQuantity: item.quantity,
+          orNumber: newOrder.or_number,
+          technician: technicianName,
+        });
+      }
+
+      if (itemsWithLowStock.length > 0) {
+        toast.warning(
+          `Se crearon ${itemsWithLowStock.length} alertas de stock insuficiente. El almacén ha sido notificado.`,
+          { duration: 5000 }
+        );
+      }
+
+      // Generate PDF with requested items
+      generateToolRequestPdf({
+        orNumber: newOrder.or_number,
+        technician: technicianName,
+        department: selectedDepartment,
+        supplierName: supplierName || "N/A",
+        projectId: parseInt(selectedProjectId) || 0,
+        projectName: project?.name || "N/A",
+        requestedItems: requestItems.map(item => ({
+          name: item.name,
+          sku: item.sku,
+          quantity: item.quantity
+        }))
+      });
+
+      toast.success(`Orden de Trabajo creada: ${newOrder.or_number}. PDF de solicitud generado.`);
+
+      // Reset Form
+      setTechnicianName("");
+      setSelectedDepartment("");
+      setSupplierName("");
+      setSelectedProjectId("");
+      setRequestItems([]);
+    } catch (error) {
+      console.error("Error creating order:", error);
     }
-
-    // Generate PDF with requested items (for the technician to take to warehouse)
-    generateToolRequestPdf({
-      orNumber,
-      technician: technicianName,
-      department: selectedDepartment,
-      supplierName: supplierName || "N/A",
-      projectId: parseInt(selectedProjectId),
-      projectName: project?.name || "N/A",
-      requestedItems: requestItems.map(item => ({
-        name: item.name,
-        sku: item.sku,
-        quantity: item.quantity
-      }))
-    });
-
-    toast.success(`Orden de Trabajo creada: ${orNumber}. PDF de solicitud generado.`);
-
-    // Reset Form
-    setTechnicianName("");
-    setSelectedDepartment("");
-    setSupplierName("");
-    setSelectedProjectId("");
-    setRequestItems([]);
   };
+
+  const isLoading = projectsLoading || partsLoading;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -161,7 +189,7 @@ const Technician = () => {
 
               <div className="space-y-2">
                 <Label>Departamento</Label>
-                <Select value={selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Order["department"])}>
+                <Select value={selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Department)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar Departamento" />
                   </SelectTrigger>
@@ -193,7 +221,7 @@ const Technician = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {projects.map(p => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
+                      <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
                     ))}
@@ -217,7 +245,7 @@ const Technician = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {inventory.map(part => (
-                      <SelectItem key={part.id} value={part.id.toString()}>
+                      <SelectItem key={part.id} value={part.id}>
                         {part.name} ({part.sku}) - Stock: {part.stock}
                         {part.stock === 0 && " ⚠️"}
                       </SelectItem>
@@ -319,8 +347,17 @@ const Technician = () => {
                    El almacén verificará disponibilidad y registrará los items entregados.
                  </div>
 
-                 <Button className="w-full" size="lg" onClick={handleSubmitOrder}>
-                   <FileDown className="w-4 h-4 mr-2" />
+                 <Button 
+                   className="w-full" 
+                   size="lg" 
+                   onClick={handleSubmitOrder}
+                   disabled={createOrder.isPending}
+                 >
+                   {createOrder.isPending ? (
+                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                   ) : (
+                     <FileDown className="w-4 h-4 mr-2" />
+                   )}
                    Crear Orden y Generar Solicitud PDF
                  </Button>
               </div>
