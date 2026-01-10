@@ -12,6 +12,21 @@ export interface Part {
   daysInWarehouse: number;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+export interface FulfillmentLog {
+  id: string;
+  partId: number;
+  quantity: number;
+  assignedBy: string;
+  assignedAt: string; // ISO Date string
+  timestamp: number;
+}
+
 export interface OrderItem {
   partId: number;
   quantityRequired: number;
@@ -22,18 +37,22 @@ export interface Order {
   id: number;
   or_number: string; // Order Reference Number
   technician: string;
+  projectId: number;
   status: "open" | "closed";
   items: OrderItem[];
+  fulfillmentLogs: FulfillmentLog[];
 }
 
 interface WarehouseContextType {
   inventory: Part[];
   orders: Order[];
+  projects: Project[];
   addStock: (partId: number, quantity: number) => void;
   deductStock: (partId: number, quantity: number) => void;
-  fulfillOrderPart: (orderId: number, partId: number, quantity: number) => void;
+  fulfillOrderPart: (orderId: number, partId: number, quantity: number, assignedBy?: string) => void;
   createPart: (part: Omit<Part, "id">) => void;
   findOrder: (orNumber: string) => Order | undefined;
+  createOrder: (technician: string, projectId: number, items: { partId: number; quantity: number }[]) => string;
 }
 
 const WarehouseContext = createContext<WarehouseContextType | undefined>(undefined);
@@ -42,9 +61,15 @@ const initialInventory: Part[] = [
   { id: 1, sku: "ELEC-001", name: "Monitor LED 24\"", category: "Electronics", stock: 45, unitCost: 180, salePrice: 299, rotation: "high", daysInWarehouse: 12 },
   { id: 2, sku: "TOOL-015", name: "Industrial Drill", category: "Tools", stock: 23, unitCost: 95, salePrice: 159, rotation: "medium", daysInWarehouse: 35 },
   { id: 3, sku: "MAT-089", name: "Electric Cable 100m", category: "Materials", stock: 150, unitCost: 45, salePrice: 79, rotation: "high", daysInWarehouse: 8 },
-  { id: 4, sku: "EQUI-022", name: "Air Compressor", category: "Equipment", stock: 0, unitCost: 450, salePrice: 699, rotation: "low", daysInWarehouse: 78 }, // Example of 0 stock
+  { id: 4, sku: "EQUI-022", name: "Air Compressor", category: "Equipment", stock: 0, unitCost: 450, salePrice: 699, rotation: "low", daysInWarehouse: 78 },
   { id: 5, sku: "ELEC-045", name: "Mechanical Keyboard", category: "Electronics", stock: 67, unitCost: 55, salePrice: 89, rotation: "high", daysInWarehouse: 5 },
-  { id: 6, sku: "TOOL-089", name: "Circular Saw", category: "Tools", stock: 1, unitCost: 220, salePrice: 349, rotation: "medium", daysInWarehouse: 42 }, // Low stock example
+  { id: 6, sku: "TOOL-089", name: "Circular Saw", category: "Tools", stock: 1, unitCost: 220, salePrice: 349, rotation: "medium", daysInWarehouse: 42 },
+];
+
+const initialProjects: Project[] = [
+  { id: 1, name: "Alpha Tower Maintenance" },
+  { id: 2, name: "Beta Complex Wiring" },
+  { id: 3, name: "Gamma Station Upgrade" },
 ];
 
 const initialOrders: Order[] = [
@@ -52,26 +77,31 @@ const initialOrders: Order[] = [
     id: 101,
     or_number: "OR-2024-001",
     technician: "Juan Perez",
+    projectId: 1,
     status: "open",
     items: [
       { partId: 1, quantityRequired: 2, quantityFulfilled: 0 },
-      { partId: 4, quantityRequired: 1, quantityFulfilled: 0 }, // Requires the out-of-stock item
+      { partId: 4, quantityRequired: 1, quantityFulfilled: 0 },
     ],
+    fulfillmentLogs: [],
   },
   {
     id: 102,
     or_number: "OR-2024-002",
     technician: "Maria Garcia",
+    projectId: 2,
     status: "open",
     items: [
       { partId: 3, quantityRequired: 5, quantityFulfilled: 0 },
     ],
+    fulfillmentLogs: [],
   },
 ];
 
 export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
   const [inventory, setInventory] = useState<Part[]>(initialInventory);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [projects] = useState<Project[]>(initialProjects);
 
   const addStock = (partId: number, quantity: number) => {
     setInventory((prev) =>
@@ -89,11 +119,21 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const fulfillOrderPart = (orderId: number, partId: number, quantity: number) => {
+  const fulfillOrderPart = (orderId: number, partId: number, quantity: number, assignedBy: string = "Almacén User") => {
     // 1. Deduct from Inventory
     deductStock(partId, quantity);
 
-    // 2. Update Order
+    // 2. Update Order and Add Log
+    const now = new Date();
+    const newLog: FulfillmentLog = {
+      id: crypto.randomUUID(),
+      partId,
+      quantity,
+      assignedBy,
+      assignedAt: now.toLocaleString(),
+      timestamp: now.getTime(),
+    };
+
     setOrders((prevOrders) =>
       prevOrders.map((order) => {
         if (order.id !== orderId) return order;
@@ -105,6 +145,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
               ? { ...item, quantityFulfilled: item.quantityFulfilled + quantity }
               : item
           ),
+          fulfillmentLogs: [...order.fulfillmentLogs, newLog],
         };
       })
     );
@@ -119,8 +160,34 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     return orders.find((o) => o.or_number.toLowerCase() === orNumber.toLowerCase());
   };
 
+  const createOrder = (technician: string, projectId: number, items: { partId: number; quantity: number }[]) => {
+    const lastOrder = orders[orders.length - 1];
+    let nextNum = 1;
+    if (lastOrder) {
+      const parts = lastOrder.or_number.split("-");
+      const lastNum = parseInt(parts[2], 10);
+      if (!isNaN(lastNum)) nextNum = lastNum + 1;
+    }
+
+    const year = new Date().getFullYear();
+    const orNumber = `OR-${year}-${nextNum.toString().padStart(3, "0")}`;
+
+    const newOrder: Order = {
+      id: Math.floor(Math.random() * 100000) + 1000, // Simple random ID
+      or_number: orNumber,
+      technician,
+      projectId,
+      status: "open",
+      items: items.map(i => ({ partId: i.partId, quantityRequired: i.quantity, quantityFulfilled: 0 })),
+      fulfillmentLogs: []
+    };
+
+    setOrders(prev => [...prev, newOrder]);
+    return orNumber;
+  };
+
   return (
-    <WarehouseContext.Provider value={{ inventory, orders, addStock, deductStock, fulfillOrderPart, createPart, findOrder }}>
+    <WarehouseContext.Provider value={{ inventory, orders, projects, addStock, deductStock, fulfillOrderPart, createPart, findOrder, createOrder }}>
       {children}
     </WarehouseContext.Provider>
   );
