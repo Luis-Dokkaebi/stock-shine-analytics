@@ -38,6 +38,8 @@ export interface Order {
   id: number;
   or_number: string; // Order Reference Number
   technician: string;
+  department: "HVAC" | "ELECTROMECANICO" | "HERRERIA" | "MAQUINARIA PESADA";
+  supplierName: string;
   projectId: number;
   status: "open" | "closed";
   items: OrderItem[];
@@ -67,7 +69,7 @@ interface WarehouseContextType {
   fulfillOrderPart: (orderId: number, partId: number, quantity: number, assignedBy?: string) => void;
   createPart: (part: Omit<Part, "id">) => void;
   findOrder: (orNumber: string) => Order | undefined;
-  createOrder: (technician: string, projectId: number) => string;
+  createOrder: (technician: string, projectId: number, department: Order["department"], supplierName: string) => string;
   addItemToOrder: (orderId: number, partId: number, quantity: number, assignedBy?: string) => boolean;
   removeItemFromOrder: (orderId: number, partId: number, quantity: number, removedBy?: string) => boolean;
   addStockAlert: (alert: Omit<StockAlert, "id" | "createdAt" | "resolved">) => void;
@@ -97,6 +99,8 @@ const initialOrders: Order[] = [
     id: 101,
     or_number: "OR-2024-001",
     technician: "Juan Perez",
+    department: "HVAC",
+    supplierName: "Proveedor ABC",
     projectId: 1,
     status: "open",
     items: [
@@ -109,6 +113,8 @@ const initialOrders: Order[] = [
     id: 102,
     or_number: "OR-2024-002",
     technician: "Maria Garcia",
+    department: "ELECTROMECANICO",
+    supplierName: "Proveedor XYZ",
     projectId: 2,
     status: "open",
     items: [
@@ -182,7 +188,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     return orders.find((o) => o.or_number.toLowerCase() === orNumber.toLowerCase());
   };
 
-  const createOrder = (technician: string, projectId: number) => {
+  const createOrder = (technician: string, projectId: number, department: Order["department"], supplierName: string) => {
     const lastOrder = orders[orders.length - 1];
     let nextNum = 1;
     if (lastOrder) {
@@ -198,6 +204,8 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
       id: Math.floor(Math.random() * 100000) + 1000,
       or_number: orNumber,
       technician,
+      department,
+      supplierName,
       projectId,
       status: "open",
       items: [], // Items are NOT saved here - only added via Sales

@@ -10,6 +10,8 @@ interface RequestItem {
 interface GenerateToolRequestPdfParams {
   orNumber: string;
   technician: string;
+  department: string;
+  supplierName: string;
   projectId: number;
   projectName: string;
   requestedItems: RequestItem[];
@@ -18,6 +20,8 @@ interface GenerateToolRequestPdfParams {
 export const generateToolRequestPdf = ({
   orNumber,
   technician,
+  department,
+  supplierName,
   projectId,
   projectName,
   requestedItems
@@ -68,9 +72,14 @@ export const generateToolRequestPdf = ({
   doc.text(technician.toUpperCase(), leftCol + 40, infoY + 8);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Proyecto:", leftCol, infoY + 16);
+  doc.text("Departamento:", leftCol, infoY + 16);
   doc.setFont("helvetica", "normal");
-  doc.text(`${projectId} - ${projectName}`, leftCol + 40, infoY + 16);
+  doc.text(department.toUpperCase(), leftCol + 40, infoY + 16);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Proyecto:", leftCol, infoY + 24);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${projectId} - ${projectName}`, leftCol + 40, infoY + 24);
 
   // Right column
   doc.setFont("helvetica", "bold");
@@ -83,18 +92,23 @@ export const generateToolRequestPdf = ({
   doc.setFont("helvetica", "normal");
   doc.text(currentDate.toLocaleTimeString(), rightCol + 25, infoY + 8);
 
+  doc.setFont("helvetica", "bold");
+  doc.text("Proveedor:", rightCol, infoY + 16);
+  doc.setFont("helvetica", "normal");
+  doc.text(supplierName.toUpperCase(), rightCol + 25, infoY + 16);
+
   // Notice box
   doc.setFillColor(255, 243, 205);
-  doc.rect(15, infoY + 25, 180, 12, "F");
+  doc.rect(15, infoY + 33, 180, 12, "F");
   doc.setFontSize(9);
   doc.setTextColor(133, 77, 14);
-  doc.text("NOTA: Este documento es una SOLICITUD. Los items serán verificados y entregados por el almacén.", 105, infoY + 32, { align: "center" });
+  doc.text("NOTA: Este documento es una SOLICITUD. Los items serán verificados y entregados por el almacén.", 105, infoY + 40, { align: "center" });
 
   doc.setTextColor(...darkColor);
 
   // Divider line
   doc.setDrawColor(200, 200, 200);
-  doc.line(15, infoY + 42, 195, infoY + 42);
+  doc.line(15, infoY + 50, 195, infoY + 50);
 
   // Table of requested items
   const tableData = requestedItems.map((item, index) => [
@@ -107,7 +121,7 @@ export const generateToolRequestPdf = ({
   ]);
 
   autoTable(doc, {
-    startY: infoY + 47,
+    startY: infoY + 55,
     head: [["#", "SKU", "DESCRIPCIÓN", "SOLICITADO", "ENTREGADO", "OBSERVACIONES"]],
     body: tableData,
     theme: "grid",
