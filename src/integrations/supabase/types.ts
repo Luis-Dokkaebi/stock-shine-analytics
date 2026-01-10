@@ -14,7 +14,253 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      fulfillment_logs: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          id: string
+          notes: string | null
+          operation_type: string
+          order_id: string
+          part_id: string
+          quantity: number
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          id?: string
+          notes?: string | null
+          operation_type: string
+          order_id: string
+          part_id: string
+          quantity: number
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          id?: string
+          notes?: string | null
+          operation_type?: string
+          order_id?: string
+          part_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fulfillment_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fulfillment_logs_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          part_id: string
+          quantity_fulfilled: number
+          quantity_required: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          part_id: string
+          quantity_fulfilled?: number
+          quantity_required?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          part_id?: string
+          quantity_fulfilled?: number
+          quantity_required?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          or_number: string
+          project_id: string
+          status: string
+          supplier_name: string | null
+          technician: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          or_number: string
+          project_id: string
+          status?: string
+          supplier_name?: string | null
+          technician: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          or_number?: string
+          project_id?: string
+          status?: string
+          supplier_name?: string | null
+          technician?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parts: {
+        Row: {
+          category: string
+          created_at: string
+          days_in_warehouse: number | null
+          id: string
+          name: string
+          rotation: string | null
+          sale_price: number
+          sku: string
+          stock: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          days_in_warehouse?: number | null
+          id?: string
+          name: string
+          rotation?: string | null
+          sale_price?: number
+          sku: string
+          stock?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          days_in_warehouse?: number | null
+          id?: string
+          name?: string
+          rotation?: string | null
+          sale_price?: number
+          sku?: string
+          stock?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      stock_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          or_number: string
+          part_id: string
+          part_name: string
+          requested_quantity: number
+          resolved: boolean
+          resolved_at: string | null
+          sku: string
+          technician: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          or_number: string
+          part_id: string
+          part_name: string
+          requested_quantity: number
+          resolved?: boolean
+          resolved_at?: string | null
+          sku: string
+          technician: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          or_number?: string
+          part_id?: string
+          part_name?: string
+          requested_quantity?: number
+          resolved?: boolean
+          resolved_at?: string | null
+          sku?: string
+          technician?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alerts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
