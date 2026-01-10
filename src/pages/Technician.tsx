@@ -18,7 +18,7 @@ interface CartItem {
 }
 
 const Technician = () => {
-  const { projects, inventory, orders, createOrder } = useWarehouse();
+  const { projects, inventory, createOrder } = useWarehouse();
 
   const [technicianName, setTechnicianName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -81,14 +81,19 @@ const Technician = () => {
       cart
     );
 
-    // Find the newly created order to generate PDF
-    const newOrder = orders.find(o => o.or_number === orNumber);
-    if (newOrder) {
-      generateOrderPdf({ order: newOrder, inventory, projects });
-      toast.success(`Orden creada y PDF generado! Referencia: ${orNumber}`);
-    } else {
-      toast.success(`Orden creada! Referencia: ${orNumber}`);
-    }
+    // Generate PDF with the order data we have (since state update is async)
+    const tempOrder = {
+      id: Date.now(),
+      or_number: orNumber,
+      technician: technicianName,
+      projectId: parseInt(selectedProjectId),
+      status: "open" as const,
+      items: cart.map(c => ({ partId: c.partId, quantityRequired: c.quantity, quantityFulfilled: 0 })),
+      fulfillmentLogs: []
+    };
+    
+    generateOrderPdf({ order: tempOrder, inventory, projects });
+    toast.success(`Orden creada y PDF generado! Referencia: ${orNumber}`);
 
     // Reset Form
     setTechnicianName("");
