@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, FileDown } from "lucide-react";
+import { generateOrderPdf } from "@/utils/generateOrderPdf";
 
 interface CartItem {
   partId: number;
@@ -17,7 +18,7 @@ interface CartItem {
 }
 
 const Technician = () => {
-  const { projects, inventory, createOrder } = useWarehouse();
+  const { projects, inventory, orders, createOrder } = useWarehouse();
 
   const [technicianName, setTechnicianName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -80,7 +81,14 @@ const Technician = () => {
       cart
     );
 
-    toast.success(`Order Created Successfully! Reference: ${orNumber}`);
+    // Find the newly created order to generate PDF
+    const newOrder = orders.find(o => o.or_number === orNumber);
+    if (newOrder) {
+      generateOrderPdf({ order: newOrder, inventory, projects });
+      toast.success(`Orden creada y PDF generado! Referencia: ${orNumber}`);
+    } else {
+      toast.success(`Orden creada! Referencia: ${orNumber}`);
+    }
 
     // Reset Form
     setTechnicianName("");
@@ -200,7 +208,8 @@ const Technician = () => {
                  </div>
 
                  <Button className="w-full" size="lg" onClick={handleSubmitOrder}>
-                   Create Order
+                   <FileDown className="w-4 h-4 mr-2" />
+                   Crear Orden y Generar PDF
                  </Button>
               </div>
             )}
