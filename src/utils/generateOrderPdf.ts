@@ -6,16 +6,17 @@ interface GeneratePdfParams {
   order: Order;
   inventory: Part[];
   projects: Project[];
+  type?: "exit" | "request";
 }
 
-export const generateOrderPdf = ({ order, inventory, projects }: GeneratePdfParams) => {
+export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: GeneratePdfParams) => {
   const doc = new jsPDF();
   const project = projects.find((p) => p.id === order.projectId);
   const currentDate = new Date();
 
   // Collect agents
   const agents = Array.from(new Set(order.fulfillmentLogs.map((log) => log.assignedBy)));
-  const agentDisplay = agents.length > 0 ? agents.join(", ") : "Almacén";
+  const agentDisplay = agents.length > 0 ? agents.join(", ") : (type === "exit" ? "Almacén" : "Pendiente");
 
   // Load date
   const loadDate =
@@ -41,7 +42,8 @@ export const generateOrderPdf = ({ order, inventory, projects }: GeneratePdfPara
   doc.text("Departamento de Almacén", 105, 22, { align: "center" });
 
   doc.setFontSize(10);
-  doc.text("ORDEN DE SALIDA DE HERRAMIENTAS", 105, 30, { align: "center" });
+  const title = type === "request" ? "SOLICITUD DE HERRAMIENTAS" : "ORDEN DE SALIDA DE HERRAMIENTAS";
+  doc.text(title, 105, 30, { align: "center" });
 
   // Reset text color
   doc.setTextColor(...darkColor);
@@ -152,12 +154,23 @@ export const generateOrderPdf = ({ order, inventory, projects }: GeneratePdfPara
   doc.setFont("helvetica", "normal");
 
   // Left signature
-  doc.text("Entregó:", 35, sigY);
-  doc.line(20, sigY + 15, 80, sigY + 15);
-  doc.text(agentDisplay.toUpperCase(), 50, sigY + 22, { align: "center" });
+  if (type === "exit") {
+    doc.text("Entregó:", 35, sigY);
+    doc.line(20, sigY + 15, 80, sigY + 15);
+    doc.text(agentDisplay.toUpperCase(), 50, sigY + 22, { align: "center" });
+  } else {
+    // For request, maybe just 'Autorizó' or blank?
+    // User didn't specify, but 'Entregó' implies stock movement.
+    // Leaving it blank or just a line for Warehouse to sign later makes sense.
+    // However, if it's a request, maybe 'Solicitó' (Technician) is the key.
+    // But Technician signs on the Right ('Recibió' / 'Solicitante').
+    // Let's put 'Autorizó (Almacén)' on the left for Request.
+    doc.text("Autorizó (Almacén):", 35, sigY);
+    doc.line(20, sigY + 15, 80, sigY + 15);
+  }
 
   // Right signature
-  doc.text("Recibió:", 145, sigY);
+  doc.text(type === "request" ? "Solicitante:" : "Recibió:", 145, sigY);
   doc.line(130, sigY + 15, 190, sigY + 15);
   doc.text(order.technician.toUpperCase(), 160, sigY + 22, { align: "center" });
 
@@ -168,5 +181,6 @@ export const generateOrderPdf = ({ order, inventory, projects }: GeneratePdfPara
   doc.text("Holtmont Services - Sistema de Control de Almacén", 105, 290, { align: "center" });
 
   // Save PDF
-  doc.save(`Orden_Salida_${order.or_number}.pdf`);
+  const filename = type === "request" ? `Solicitud_${order.or_number}.pdf` : `Orden_Salida_${order.or_number}.pdf`;
+  doc.save(filename);
 };

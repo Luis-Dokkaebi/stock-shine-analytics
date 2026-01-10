@@ -74,14 +74,46 @@ const Sales = () => {
     // In a real app, this would trigger an API call or status change
   };
 
+  // Filter for incoming requests (Open status AND has pending items)
+  const incomingRequests = orders.filter(
+    (o) => o.status === "open" && o.items.some((i) => i.quantityFulfilled < i.quantityRequired)
+  );
+
   return (
     <MainLayout>
-      <PageHeader 
+      <PageHeader
         title="Gestión de Ventas (Warehouse Management)"
         subtitle="Manage Orders, Check Stock, and Requisition Parts"
       />
 
       <div className="grid gap-6">
+        {/* Incoming Requests Section (The Alert) */}
+        {incomingRequests.length > 0 && (
+          <DashboardCard title="Solicitudes Entrantes (Pending Requests)" className="border-l-4 border-l-blue-500">
+             <div className="space-y-2">
+                {incomingRequests.map(req => (
+                  <div key={req.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md">
+                     <div>
+                        <p className="font-medium text-sm">{req.or_number} - {req.technician}</p>
+                        <p className="text-xs text-muted-foreground">{getProjectName(req.projectId)}</p>
+                     </div>
+                     <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setSearchQuery(req.or_number);
+                          setSelectedOrNumber(req.or_number);
+                          setSearchError("");
+                        }}
+                     >
+                       Revisar
+                     </Button>
+                  </div>
+                ))}
+             </div>
+          </DashboardCard>
+        )}
+
         {/* Search Section */}
         <DashboardCard title="Search Order" className="w-full">
           <div className="flex gap-4">
