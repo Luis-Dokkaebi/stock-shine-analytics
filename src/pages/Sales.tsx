@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, CheckCircle, AlertCircle, Plus, History, Printer, Package } from "lucide-react";
+import { Search, CheckCircle, Plus, History, Printer, Package, FileDown } from "lucide-react";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
-import { animate } from "animejs";
 import { Link } from "react-router-dom";
+import { generateOrderPdf } from "@/utils/generateOrderPdf";
 
 const Sales = () => {
   const { orders, inventory, addItemToOrder, projects } = useWarehouse();
@@ -178,7 +178,20 @@ const Sales = () => {
             </DashboardCard>
 
             {/* Items in Order */}
-            <DashboardCard title="Items Entregados">
+            <DashboardCard 
+              title="Items Entregados"
+              action={
+                currentOrder.items.length > 0 ? (
+                  <Button 
+                    onClick={() => generateOrderPdf({ order: currentOrder, inventory, projects })}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Descargar Orden de Salida PDF
+                  </Button>
+                ) : null
+              }
+            >
               {currentOrder.items.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
