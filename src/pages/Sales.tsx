@@ -6,14 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, CheckCircle, Plus, History, Printer, Package, FileDown } from "lucide-react";
+import { Search, CheckCircle, Plus, History, Printer, Package, FileDown, Trash2, AlertTriangle, X } from "lucide-react";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { generateOrderPdf } from "@/utils/generateOrderPdf";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Sales = () => {
-  const { orders, inventory, addItemToOrder, projects } = useWarehouse();
+  const { orders, inventory, addItemToOrder, removeItemFromOrder, projects, stockAlerts, resolveStockAlert } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrNumber, setSelectedOrNumber] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -23,6 +34,9 @@ const Sales = () => {
   const [quantity, setQuantity] = useState<number>(1);
 
   const currentOrder = orders.find(o => o.or_number.toLowerCase() === selectedOrNumber.toLowerCase()) || null;
+  
+  // Filter unresolved alerts
+  const unresolvedAlerts = stockAlerts.filter(a => !a.resolved);
 
   const handleSearch = () => {
     const orderExists = orders.some(o => o.or_number.toLowerCase() === searchQuery.trim().toLowerCase());
@@ -83,6 +97,19 @@ const Sales = () => {
     }
   };
 
+  const handleRemoveItem = (partId: number, currentQty: number) => {
+    if (!currentOrder) return;
+    
+    const part = inventory.find(p => p.id === partId);
+    const success = removeItemFromOrder(currentOrder.id, partId, currentQty, "Almacén User");
+    
+    if (success) {
+      toast.success(`${part?.name || "Item"} eliminado de la orden (stock devuelto)`);
+    } else {
+      toast.error("Error al eliminar item");
+    }
+  };
+
   return (
     <MainLayout>
       <PageHeader 
@@ -91,6 +118,49 @@ const Sales = () => {
       />
 
       <div className="grid gap-6">
+        {/* Stock Alerts Section */}
+        {unresolvedAlerts.length > 0 && (
+          <DashboardCard 
+            title={
+              <div className="flex items-center gap-2 text-amber-600">
+                <AlertTriangle className="w-5 h-5" />
+                Alertas de Stock ({unresolvedAlerts.length})
+              </div>
+            }
+            className="border-amber-500/50 bg-amber-500/5"
+          >
+            <p className="text-sm text-muted-foreground mb-4">
+              Los siguientes items fueron solicitados por técnicos pero no hay stock disponible.
+            </p>
+            <div className="space-y-2">
+              {unresolvedAlerts.map(alert => (
+                <div 
+                  key={alert.id} 
+                  className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">
+                      {alert.partName} <span className="text-muted-foreground font-mono text-xs">({alert.sku})</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Solicitado: {alert.requestedQuantity} unidades | O.T.: {alert.orNumber} | Técnico: {alert.technician}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{alert.createdAt}</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => resolveStockAlert(alert.id)}
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                  >
+                    <X className="w-4 h-4 mr-1" /> Marcar Resuelta
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        )}
+
         {/* Search Section */}
         <DashboardCard title="Buscar Orden de Trabajo" className="w-full">
           <div className="flex gap-4">
@@ -201,10 +271,11 @@ const Sales = () => {
               ) : (
                 <div className="rounded-md border">
                   <div className="grid grid-cols-12 gap-4 p-4 bg-secondary/50 font-medium text-sm">
-                    <div className="col-span-5">Item</div>
+                    <div className="col-span-4">Item</div>
                     <div className="col-span-2">SKU</div>
                     <div className="col-span-2 text-center">Cantidad</div>
-                    <div className="col-span-3 text-center">Estado</div>
+                    <div className="col-span-2 text-center">Estado</div>
+                    <div className="col-span-2 text-center">Acciones</div>
                   </div>
 
                   <div className="divide-y">
@@ -212,7 +283,7 @@ const Sales = () => {
                       const { partName, sku } = getPartInfo(item.partId);
                       return (
                         <div key={item.partId} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
-                          <div className="col-span-5">
+                          <div className="col-span-4">
                             <p className="font-medium">{partName}</p>
                           </div>
                           <div className="col-span-2">
@@ -221,10 +292,37 @@ const Sales = () => {
                           <div className="col-span-2 text-center font-medium">
                             {item.quantityFulfilled}
                           </div>
-                          <div className="col-span-3 flex justify-center">
+                          <div className="col-span-2 flex justify-center">
                             <div className="flex items-center gap-2 text-green-500 font-medium">
                               <CheckCircle className="w-4 h-4" /> Entregado
                             </div>
+                          </div>
+                          <div className="col-span-2 flex justify-center">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar herramienta?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta acción eliminará <strong>{item.quantityFulfilled}x {partName}</strong> de la orden.
+                                    El stock será devuelto al inventario y quedará registrado en el historial y en el PDF con cantidad negativa.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleRemoveItem(item.partId, item.quantityFulfilled)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       );
@@ -236,23 +334,37 @@ const Sales = () => {
 
             {/* Fulfillment History Logs */}
             {currentOrder.fulfillmentLogs.length > 0 && (
-              <DashboardCard title="Historial de Entregas">
+              <DashboardCard title="Historial de Movimientos">
                 <div className="rounded-md border bg-muted/20">
                   <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/30 text-xs font-medium uppercase text-muted-foreground">
                     <div className="col-span-4">Item</div>
                     <div className="col-span-2 text-center">Cantidad</div>
-                    <div className="col-span-3">Entregó</div>
-                    <div className="col-span-3 text-right">Fecha/Hora</div>
+                    <div className="col-span-2">Tipo</div>
+                    <div className="col-span-2">Usuario</div>
+                    <div className="col-span-2 text-right">Fecha/Hora</div>
                   </div>
                   <div className="divide-y">
                     {currentOrder.fulfillmentLogs.map(log => {
                       const part = inventory.find(p => p.id === log.partId);
+                      const isRemoval = log.type === "remove" || log.quantity < 0;
                       return (
-                        <div key={log.id} className="grid grid-cols-12 gap-4 p-3 text-sm">
+                        <div 
+                          key={log.id} 
+                          className={`grid grid-cols-12 gap-4 p-3 text-sm ${isRemoval ? 'bg-destructive/5' : ''}`}
+                        >
                           <div className="col-span-4 font-medium">{part?.name || "Item Desconocido"}</div>
-                          <div className="col-span-2 text-center">{log.quantity}</div>
-                          <div className="col-span-3 text-muted-foreground">{log.assignedBy}</div>
-                          <div className="col-span-3 text-right text-muted-foreground font-mono text-xs">
+                          <div className={`col-span-2 text-center font-mono ${isRemoval ? 'text-destructive font-bold' : 'text-green-600'}`}>
+                            {log.quantity > 0 ? `+${log.quantity}` : log.quantity}
+                          </div>
+                          <div className="col-span-2">
+                            {isRemoval ? (
+                              <span className="text-destructive text-xs font-medium">ELIMINADO</span>
+                            ) : (
+                              <span className="text-green-600 text-xs font-medium">AGREGADO</span>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-muted-foreground">{log.assignedBy}</div>
+                          <div className="col-span-2 text-right text-muted-foreground font-mono text-xs">
                             {log.assignedAt}
                           </div>
                         </div>

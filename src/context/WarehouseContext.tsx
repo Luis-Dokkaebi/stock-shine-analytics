@@ -21,10 +21,11 @@ export interface Project {
 export interface FulfillmentLog {
   id: string;
   partId: number;
-  quantity: number;
+  quantity: number; // Can be negative for removals
   assignedBy: string;
   assignedAt: string; // ISO Date string
   timestamp: number;
+  type: "add" | "remove"; // Track type of operation
 }
 
 export interface OrderItem {
@@ -43,10 +44,24 @@ export interface Order {
   fulfillmentLogs: FulfillmentLog[];
 }
 
+// New: Track stock alerts for out-of-stock requests
+export interface StockAlert {
+  id: string;
+  partId: number;
+  partName: string;
+  sku: string;
+  requestedQuantity: number;
+  orNumber: string;
+  technician: string;
+  createdAt: string;
+  resolved: boolean;
+}
+
 interface WarehouseContextType {
   inventory: Part[];
   orders: Order[];
   projects: Project[];
+  stockAlerts: StockAlert[];
   addStock: (partId: number, quantity: number) => void;
   deductStock: (partId: number, quantity: number) => void;
   fulfillOrderPart: (orderId: number, partId: number, quantity: number, assignedBy?: string) => void;
@@ -54,6 +69,10 @@ interface WarehouseContextType {
   findOrder: (orNumber: string) => Order | undefined;
   createOrder: (technician: string, projectId: number) => string;
   addItemToOrder: (orderId: number, partId: number, quantity: number, assignedBy?: string) => boolean;
+  removeItemFromOrder: (orderId: number, partId: number, quantity: number, removedBy?: string) => boolean;
+  addStockAlert: (alert: Omit<StockAlert, "id" | "createdAt" | "resolved">) => void;
+  resolveStockAlert: (alertId: string) => void;
+  clearResolvedAlerts: () => void;
 }
 
 const WarehouseContext = createContext<WarehouseContextType | undefined>(undefined);
@@ -103,6 +122,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
   const [inventory, setInventory] = useState<Part[]>(initialInventory);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [projects] = useState<Project[]>(initialProjects);
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 
   const addStock = (partId: number, quantity: number) => {
     setInventory((prev) =>
@@ -133,6 +153,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
       assignedBy,
       assignedAt: now.toLocaleString(),
       timestamp: now.getTime(),
+      type: "add",
     };
 
     setOrders((prevOrders) =>
@@ -205,6 +226,7 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
       assignedBy,
       assignedAt: now.toLocaleString(),
       timestamp: now.getTime(),
+      type: "add",
     };
 
     setOrders(prevOrders =>
@@ -234,8 +256,85 @@ export const WarehouseProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
+  const removeItemFromOrder = (orderId: number, partId: number, quantity: number, removedBy: string = "Almacén User") => {
+    // Return stock to inventory
+    addStock(partId, quantity);
+
+    // Add negative log and update items
+    const now = new Date();
+    const newLog: FulfillmentLog = {
+      id: crypto.randomUUID(),
+      partId,
+      quantity: -quantity, // Negative quantity for removal
+      assignedBy: removedBy,
+      assignedAt: now.toLocaleString(),
+      timestamp: now.getTime(),
+      type: "remove",
+    };
+
+    setOrders(prevOrders =>
+      prevOrders.map(order => {
+        if (order.id !== orderId) return order;
+
+        const updatedItems = order.items.map(item =>
+          item.partId === partId
+            ? { 
+                ...item, 
+                quantityRequired: Math.max(0, item.quantityRequired - quantity), 
+                quantityFulfilled: Math.max(0, item.quantityFulfilled - quantity) 
+              }
+            : item
+        ).filter(item => item.quantityFulfilled > 0); // Remove items with 0 quantity
+
+        return {
+          ...order,
+          items: updatedItems,
+          fulfillmentLogs: [...order.fulfillmentLogs, newLog],
+        };
+      })
+    );
+
+    return true;
+  };
+
+  const addStockAlert = (alert: Omit<StockAlert, "id" | "createdAt" | "resolved">) => {
+    const newAlert: StockAlert = {
+      ...alert,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toLocaleString(),
+      resolved: false,
+    };
+    setStockAlerts(prev => [...prev, newAlert]);
+  };
+
+  const resolveStockAlert = (alertId: string) => {
+    setStockAlerts(prev => prev.map(alert => 
+      alert.id === alertId ? { ...alert, resolved: true } : alert
+    ));
+  };
+
+  const clearResolvedAlerts = () => {
+    setStockAlerts(prev => prev.filter(alert => !alert.resolved));
+  };
+
   return (
-    <WarehouseContext.Provider value={{ inventory, orders, projects, addStock, deductStock, fulfillOrderPart, createPart, findOrder, createOrder, addItemToOrder }}>
+    <WarehouseContext.Provider value={{ 
+      inventory, 
+      orders, 
+      projects, 
+      stockAlerts,
+      addStock, 
+      deductStock, 
+      fulfillOrderPart, 
+      createPart, 
+      findOrder, 
+      createOrder, 
+      addItemToOrder,
+      removeItemFromOrder,
+      addStockAlert,
+      resolveStockAlert,
+      clearResolvedAlerts
+    }}>
       {children}
     </WarehouseContext.Provider>
   );
