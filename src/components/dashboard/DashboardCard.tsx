@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ReactNode } from "react";
 
 interface DashboardCardProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   children: ReactNode;
   delay?: number;

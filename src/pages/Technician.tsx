@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingCart, FileDown } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, FileDown, AlertTriangle } from "lucide-react";
 import { generateToolRequestPdf } from "@/utils/generateToolRequestPdf";
 
 interface RequestItem {
@@ -16,10 +16,11 @@ interface RequestItem {
   quantity: number;
   name: string;
   sku: string;
+  currentStock: number;
 }
 
 const Technician = () => {
-  const { projects, inventory, createOrder } = useWarehouse();
+  const { projects, inventory, createOrder, addStockAlert } = useWarehouse();
 
   const [technicianName, setTechnicianName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -49,7 +50,7 @@ const Technician = () => {
             : item
         );
       }
-      return [...prev, { partId: part.id, quantity, name: part.name, sku: part.sku }];
+      return [...prev, { partId: part.id, quantity, name: part.name, sku: part.sku, currentStock: part.stock }];
     });
 
     // Reset selection
@@ -61,6 +62,9 @@ const Technician = () => {
   const removeFromRequest = (partId: number) => {
     setRequestItems(prev => prev.filter(item => item.partId !== partId));
   };
+
+  // Check for items with insufficient stock
+  const itemsWithLowStock = requestItems.filter(item => item.currentStock < item.quantity);
 
   const handleSubmitOrder = () => {
     if (!technicianName.trim()) {
@@ -80,6 +84,25 @@ const Technician = () => {
     const orNumber = createOrder(technicianName, parseInt(selectedProjectId));
 
     const project = projects.find(p => p.id === parseInt(selectedProjectId));
+
+    // Create stock alerts for items with insufficient stock
+    itemsWithLowStock.forEach(item => {
+      addStockAlert({
+        partId: item.partId,
+        partName: item.name,
+        sku: item.sku,
+        requestedQuantity: item.quantity,
+        orNumber: orNumber,
+        technician: technicianName,
+      });
+    });
+
+    if (itemsWithLowStock.length > 0) {
+      toast.warning(
+        `Se crearon ${itemsWithLowStock.length} alertas de stock insuficiente. El almacén ha sido notificado.`,
+        { duration: 5000 }
+      );
+    }
 
     // Generate PDF with requested items (for the technician to take to warehouse)
     generateToolRequestPdf({
@@ -157,7 +180,8 @@ const Technician = () => {
                   <SelectContent>
                     {inventory.map(part => (
                       <SelectItem key={part.id} value={part.id.toString()}>
-                        {part.name} ({part.sku})
+                        {part.name} ({part.sku}) - Stock: {part.stock}
+                        {part.stock === 0 && " ⚠️"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -191,31 +215,64 @@ const Technician = () => {
               </div>
             ) : (
               <div className="space-y-4">
+                 {/* Low stock warning */}
+                 {itemsWithLowStock.length > 0 && (
+                   <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                     <div className="flex items-center gap-2 text-amber-600 font-medium mb-2">
+                       <AlertTriangle className="w-4 h-4" />
+                       Alerta de Stock Insuficiente
+                     </div>
+                     <p className="text-sm text-muted-foreground">
+                       Los siguientes items tienen stock insuficiente. Se notificará al almacén cuando se cree la orden:
+                     </p>
+                     <ul className="mt-2 text-sm space-y-1">
+                       {itemsWithLowStock.map(item => (
+                         <li key={item.partId} className="text-amber-700">
+                           • {item.name}: Solicitado {item.quantity}, Disponible {item.currentStock}
+                         </li>
+                       ))}
+                     </ul>
+                   </div>
+                 )}
+
                  <div className="rounded-md border">
                     <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/50 text-sm font-medium">
-                      <div className="col-span-6">Item</div>
+                      <div className="col-span-5">Item</div>
                       <div className="col-span-2">SKU</div>
                       <div className="col-span-2 text-center">Cant.</div>
-                      <div className="col-span-2"></div>
+                      <div className="col-span-2 text-center">Stock</div>
+                      <div className="col-span-1"></div>
                     </div>
                     <div className="divide-y">
-                      {requestItems.map(item => (
-                        <div key={item.partId} className="grid grid-cols-12 gap-4 p-3 items-center text-sm">
-                          <div className="col-span-6 font-medium">{item.name}</div>
-                          <div className="col-span-2 text-xs text-muted-foreground font-mono">{item.sku}</div>
-                          <div className="col-span-2 text-center">{item.quantity}</div>
-                          <div className="col-span-2 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeFromRequest(item.partId)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                      {requestItems.map(item => {
+                        const isLowStock = item.currentStock < item.quantity;
+                        return (
+                          <div 
+                            key={item.partId} 
+                            className={`grid grid-cols-12 gap-4 p-3 items-center text-sm ${isLowStock ? 'bg-amber-500/5' : ''}`}
+                          >
+                            <div className="col-span-5 font-medium flex items-center gap-2">
+                              {item.name}
+                              {isLowStock && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                            </div>
+                            <div className="col-span-2 text-xs text-muted-foreground font-mono">{item.sku}</div>
+                            <div className="col-span-2 text-center">{item.quantity}</div>
+                            <div className={`col-span-2 text-center ${isLowStock ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                              {item.currentStock}
+                            </div>
+                            <div className="col-span-1 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => removeFromRequest(item.partId)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                  </div>
 

@@ -91,25 +91,30 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
   doc.setDrawColor(200, 200, 200);
   doc.line(15, infoY + 20, 195, infoY + 20);
 
-  // Table of items
-  const tableData = order.items.map((item) => {
-    const part = inventory.find((p) => p.id === item.partId);
+  // Build table data from fulfillment logs to show all movements including removals
+  const tableData: string[][] = [];
+  
+  order.fulfillmentLogs.forEach((log) => {
+    const part = inventory.find((p) => p.id === log.partId);
     const price = part ? part.salePrice : 0;
-    const amount = price * item.quantityRequired;
-    return [
+    const amount = price * Math.abs(log.quantity);
+    const isRemoval = log.type === "remove" || log.quantity < 0;
+    
+    tableData.push([
       part?.category?.substring(0, 3).toUpperCase() || "GEN",
       part?.sku || "N/A",
       part?.name?.toUpperCase() || "UNKNOWN ITEM",
-      item.quantityRequired.toString(),
+      log.quantity.toString(), // Will show negative for removals
       `$${price.toFixed(2)}`,
-      `$${amount.toFixed(2)}`,
-    ];
+      isRemoval ? `-$${amount.toFixed(2)}` : `$${amount.toFixed(2)}`,
+    ]);
   });
 
-  const totalAmount = order.items.reduce((sum, item) => {
-    const part = inventory.find((p) => p.id === item.partId);
+  // Calculate net total from logs
+  const totalAmount = order.fulfillmentLogs.reduce((sum, log) => {
+    const part = inventory.find((p) => p.id === log.partId);
     const price = part ? part.salePrice : 0;
-    return sum + price * item.quantityRequired;
+    return sum + price * log.quantity; // Negative quantities will subtract
   }, 0);
 
   autoTable(doc, {
@@ -136,6 +141,24 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
       5: { cellWidth: 25, halign: "right" },
     },
     margin: { left: 15, right: 15 },
+    didParseCell: function(data) {
+      // Highlight negative quantities in red
+      if (data.section === 'body' && data.column.index === 3) {
+        const value = parseFloat(data.cell.text[0] || '0');
+        if (value < 0) {
+          data.cell.styles.textColor = [220, 38, 38]; // Red color
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+      // Highlight negative amounts in red
+      if (data.section === 'body' && data.column.index === 5) {
+        const text = data.cell.text[0] || '';
+        if (text.startsWith('-')) {
+          data.cell.styles.textColor = [220, 38, 38]; // Red color
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
   });
 
   // Total
