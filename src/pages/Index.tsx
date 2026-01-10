@@ -26,7 +26,6 @@ const Index = () => {
   const navigate = useNavigate();
 
   const departments = [
-    { name: "Almacén General", icon: Warehouse },
     { name: "HVAC", icon: Snowflake },
     { name: "Electromecánico", icon: Zap },
     { name: "Herrería", icon: Hammer },
@@ -111,11 +110,31 @@ const Index = () => {
         />
       </motion.div>
 
-      {/* Departments Bar */}
-      <motion.div 
+      {/* Almacén General - Main Section */}
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        className="mb-6"
+      >
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
+          <div className="p-3 rounded-lg bg-primary">
+            <Warehouse className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-display font-bold">Almacén General</h2>
+            <p className="text-sm text-muted-foreground">
+              Sistema de control de inventario y gestión de almacén
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Departments inside dashboard */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
         className="mb-8"
       >
         <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
@@ -127,7 +146,7 @@ const Index = () => {
               key={dept.name}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
+              transition={{ delay: 0.15 + index * 0.05 }}
             >
               <Button 
                 variant="outline" 
