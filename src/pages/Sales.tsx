@@ -154,7 +154,7 @@ const Sales = () => {
   const handleDownloadPdf = () => {
     if (!currentOrder) return;
     
-    // Transform data for PDF
+    // Transform data for PDF - map DB field names to expected format
     const pdfOrder = {
       or_number: currentOrder.or_number,
       technician: currentOrder.technician,
@@ -162,11 +162,19 @@ const Sales = () => {
       supplierName: currentOrder.supplier_name || "",
       projectId: currentOrder.project_id,
       status: currentOrder.status,
-      items: currentOrder.items || [],
+      items: (currentOrder.items || []).map(item => ({
+        partId: item.part_id,
+        quantityRequired: item.quantity_required,
+        quantityFulfilled: item.quantity_fulfilled,
+      })),
       fulfillmentLogs: (currentOrder.fulfillmentLogs || []).map(log => ({
-        ...log,
-        type: log.operation_type as "add" | "remove",
+        id: log.id,
+        partId: log.part_id,
+        quantity: log.quantity,
+        assignedBy: log.assigned_by,
         assignedAt: new Date(log.assigned_at).toLocaleString(),
+        type: log.operation_type as "add" | "remove",
+        timestamp: new Date(log.assigned_at).getTime(),
       })),
     };
 
@@ -188,6 +196,23 @@ const Sales = () => {
       inventory: pdfInventory as any, 
       projects: pdfProjects as any 
     });
+  };
+
+  const handleFinalizeOrder = async () => {
+    if (!currentOrder) return;
+    
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "completed" })
+      .eq("id", currentOrder.id);
+
+    if (error) {
+      toast.error("Error al finalizar la orden");
+      return;
+    }
+
+    toast.success("Orden finalizada correctamente. Ahora puede descargar el PDF.");
+    refetchOrders();
   };
 
   const isLoading = ordersLoading || partsLoading;
@@ -429,13 +454,26 @@ const Sales = () => {
               title="Items Entregados"
               action={
                 currentOrder.items && currentOrder.items.length > 0 ? (
-                  <Button 
-                    onClick={handleDownloadPdf}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Descargar Orden de Salida PDF
-                  </Button>
+                  <div className="flex gap-2">
+                    {currentOrder.status === "open" && (
+                      <Button 
+                        onClick={handleFinalizeOrder}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Finalizar Carga
+                      </Button>
+                    )}
+                    {currentOrder.status === "completed" && (
+                      <Button 
+                        onClick={handleDownloadPdf}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        Descargar Orden de Salida PDF
+                      </Button>
+                    )}
+                  </div>
                 ) : null
               }
             >
