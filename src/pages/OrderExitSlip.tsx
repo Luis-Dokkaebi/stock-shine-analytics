@@ -56,7 +56,7 @@ const OrderExitSlip = () => {
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-xl font-bold uppercase tracking-wide">AUTOMOTORES SIGLO XXI, SA DE CV</h1>
+          <h1 className="text-xl font-bold uppercase tracking-wide">HOLTMONT SERVICE S.A. DE C.V</h1>
           <h2 className="text-lg font-semibold text-gray-700">Departamento de Almacén</h2>
           <h3 className="text-md font-medium uppercase mt-1 border-b border-black inline-block pb-1">
             Requisición de material de servicio
