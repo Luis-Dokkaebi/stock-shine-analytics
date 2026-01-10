@@ -4,10 +4,11 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, AlertCircle, ShoppingCart, Truck, History } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, ShoppingCart, Truck, History, Printer } from "lucide-react";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
 import { animate } from "animejs";
+import { Link } from "react-router-dom";
 
 const Sales = () => {
   const { orders, inventory, fulfillOrderPart, projects } = useWarehouse();
@@ -101,7 +102,17 @@ const Sales = () => {
 
         {/* Order Details */}
         {currentOrder && (
-          <DashboardCard title={`Order Details: ${currentOrder.or_number}`}>
+          <DashboardCard
+            title={`Order Details: ${currentOrder.or_number}`}
+            action={
+              <Link to={`/print-order/${currentOrder.or_number}`} target="_blank">
+                <Button variant="outline" size="sm">
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print Exit Slip
+                </Button>
+              </Link>
+            }
+          >
             <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Technician</p>
