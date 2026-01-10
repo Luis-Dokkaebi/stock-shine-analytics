@@ -38,6 +38,12 @@ const Sales = () => {
   // Filter unresolved alerts
   const unresolvedAlerts = stockAlerts.filter(a => !a.resolved);
 
+  // Get pending orders (orders with no items yet - waiting to be processed)
+  const pendingOrders = orders.filter(o => o.status === "open" && o.items.length === 0);
+  
+  // Get orders in progress (orders with some items)
+  const ordersInProgress = orders.filter(o => o.status === "open" && o.items.length > 0);
+
   const handleSearch = () => {
     const orderExists = orders.some(o => o.or_number.toLowerCase() === searchQuery.trim().toLowerCase());
     if (orderExists) {
@@ -118,6 +124,82 @@ const Sales = () => {
       />
 
       <div className="grid gap-6">
+        {/* Pending Orders Section - New requests from Zona Técnica */}
+        {pendingOrders.length > 0 && (
+          <DashboardCard 
+            title={
+              <div className="flex items-center gap-2 text-primary">
+                <Package className="w-5 h-5" />
+                Solicitudes Pendientes ({pendingOrders.length})
+              </div>
+            }
+            className="border-primary/50 bg-primary/5"
+          >
+            <p className="text-sm text-muted-foreground mb-4">
+              Estas órdenes fueron creadas en Zona Técnica y están esperando que se carguen las herramientas.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {pendingOrders.map(order => (
+                <div 
+                  key={order.id} 
+                  className="p-4 bg-card border rounded-lg hover:border-primary/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedOrNumber(order.or_number);
+                    setSearchError("");
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-primary">{order.or_number}</span>
+                    <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-600 rounded">PENDIENTE</span>
+                  </div>
+                  <p className="text-sm font-medium">{order.technician}</p>
+                  <p className="text-xs text-muted-foreground">{order.department}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.projectId)}</p>
+                  {order.supplierName && (
+                    <p className="text-xs text-muted-foreground">Proveedor: {order.supplierName}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* Orders in Progress Section */}
+        {ordersInProgress.length > 0 && (
+          <DashboardCard 
+            title={
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="w-5 h-5" />
+                Órdenes en Proceso ({ordersInProgress.length})
+              </div>
+            }
+            className="border-green-500/30 bg-green-500/5"
+          >
+            <p className="text-sm text-muted-foreground mb-4">
+              Estas órdenes ya tienen herramientas cargadas.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {ordersInProgress.map(order => (
+                <div 
+                  key={order.id} 
+                  className="p-4 bg-card border rounded-lg hover:border-green-500/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedOrNumber(order.or_number);
+                    setSearchError("");
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-green-600">{order.or_number}</span>
+                    <span className="text-xs px-2 py-1 bg-green-500/20 text-green-600 rounded">{order.items.length} ITEMS</span>
+                  </div>
+                  <p className="text-sm font-medium">{order.technician}</p>
+                  <p className="text-xs text-muted-foreground">{order.department}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{getProjectName(order.projectId)}</p>
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        )}
         {/* Stock Alerts Section */}
         {unresolvedAlerts.length > 0 && (
           <DashboardCard 
