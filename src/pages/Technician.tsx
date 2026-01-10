@@ -92,8 +92,8 @@ const Technician = () => {
       fulfillmentLogs: []
     };
     
-    generateOrderPdf({ order: tempOrder, inventory, projects });
-    toast.success(`Orden creada y PDF generado! Referencia: ${orNumber}`);
+    generateOrderPdf({ order: tempOrder, inventory, projects, type: "request" });
+    toast.success(`Solicitud creada y PDF generado! Referencia: ${orNumber}`);
 
     // Reset Form
     setTechnicianName("");
@@ -105,16 +105,16 @@ const Technician = () => {
     <MainLayout>
       <PageHeader
         title="Zona Técnica"
-        subtitle="Create new requisitions and assign to projects"
+        subtitle="Generar Solicitud de Herramientas"
       />
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Order Form */}
         <div className="space-y-6">
-          <DashboardCard title="New Order Details">
+          <DashboardCard title="Detalles de Solicitud">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="techName">Technician Name</Label>
+                <Label htmlFor="techName">Nombre del Técnico</Label>
                 <Input
                   id="techName"
                   placeholder="Enter your name"
@@ -124,10 +124,10 @@ const Technician = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Project</Label>
+                <Label>Proyecto</Label>
                 <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Project" />
+                    <SelectValue placeholder="Seleccionar Proyecto" />
                   </SelectTrigger>
                   <SelectContent>
                     {projects.map(p => (
@@ -141,18 +141,18 @@ const Technician = () => {
             </div>
           </DashboardCard>
 
-          <DashboardCard title="Add Items">
+          <DashboardCard title="Agregar Herramientas/Refacciones">
             <div className="flex gap-4 items-end">
               <div className="flex-1 space-y-2">
-                <Label>Select Item</Label>
+                <Label>Seleccionar Ítem</Label>
                 <Select value={selectedPartId} onValueChange={setSelectedPartId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Search tool or part..." />
+                    <SelectValue placeholder="Buscar herramienta..." />
                   </SelectTrigger>
                   <SelectContent>
                     {inventory.map(part => (
                       <SelectItem key={part.id} value={part.id.toString()}>
-                        {part.name} (Stock: {part.stock})
+                        {part.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -160,7 +160,7 @@ const Technician = () => {
               </div>
 
               <div className="w-24 space-y-2">
-                <Label>Qty</Label>
+                <Label>Cant.</Label>
                 <Input
                   type="number"
                   min="1"
@@ -170,7 +170,7 @@ const Technician = () => {
               </div>
 
               <Button onClick={handleAddToCart}>
-                <Plus className="w-4 h-4 mr-2" /> Add
+                <Plus className="w-4 h-4 mr-2" /> Agregar
               </Button>
             </div>
           </DashboardCard>
@@ -178,18 +178,18 @@ const Technician = () => {
 
         {/* Cart / Summary */}
         <div className="space-y-6">
-          <DashboardCard title="Order Summary">
+          <DashboardCard title="Resumen de Solicitud">
             {cart.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p>No items in order yet.</p>
+                <p>No hay herramientas seleccionadas.</p>
               </div>
             ) : (
               <div className="space-y-4">
                  <div className="rounded-md border">
                     <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/50 text-sm font-medium">
-                      <div className="col-span-8">Item</div>
-                      <div className="col-span-2 text-center">Qty</div>
+                      <div className="col-span-8">Ítem</div>
+                      <div className="col-span-2 text-center">Cant.</div>
                       <div className="col-span-2"></div>
                     </div>
                     <div className="divide-y">
@@ -214,7 +214,7 @@ const Technician = () => {
 
                  <Button className="w-full" size="lg" onClick={handleSubmitOrder}>
                    <FileDown className="w-4 h-4 mr-2" />
-                   Crear Orden y Generar PDF
+                   Generar Solicitud y PDF
                  </Button>
               </div>
             )}
