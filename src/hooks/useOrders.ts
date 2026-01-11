@@ -95,6 +95,7 @@ export const useCreateOrder = () => {
       department: DbOrder["department"];
       supplierName: string;
       projectId: string;
+      items?: { partId: string; quantity: number }[];
     }) => {
       // Generate OR number client-side since trigger might not work with typing
       const { data: lastOrder } = await supabase
@@ -128,6 +129,23 @@ export const useCreateOrder = () => {
         .single();
 
       if (error) throw error;
+
+      // Insert items if provided
+      if (orderData.items && orderData.items.length > 0) {
+        const itemsToInsert = orderData.items.map(item => ({
+          order_id: data.id,
+          part_id: item.partId,
+          quantity_required: item.quantity,
+          quantity_fulfilled: 0, // Initially unfulfilled
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
+
       return data as DbOrder;
     },
     onSuccess: () => {
@@ -179,12 +197,16 @@ export const useAddItemToOrder = () => {
         .maybeSingle();
 
       if (existingItem) {
+        // Calculate update values
+        const newQuantityFulfilled = existingItem.quantity_fulfilled + data.quantity;
+        const newQuantityRequired = Math.max(existingItem.quantity_required, newQuantityFulfilled);
+
         // Update existing item
         const { error: updateError } = await supabase
           .from("order_items")
           .update({
-            quantity_required: existingItem.quantity_required + data.quantity,
-            quantity_fulfilled: existingItem.quantity_fulfilled + data.quantity,
+            quantity_required: newQuantityRequired,
+            quantity_fulfilled: newQuantityFulfilled,
           })
           .eq("id", existingItem.id);
 

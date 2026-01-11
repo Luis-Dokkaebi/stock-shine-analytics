@@ -46,10 +46,18 @@ const Sales = () => {
   const currentOrder = orders.find(o => o.or_number.toLowerCase() === selectedOrNumber.toLowerCase()) || null;
   
   // Get pending orders (orders with no items yet - waiting to be processed)
-  const pendingOrders = orders.filter(o => o.status === "open" && (!o.items || o.items.length === 0));
+  const pendingOrders = orders.filter(o =>
+    o.status === "open" &&
+    (!o.items || o.items.length === 0 || o.items.every(i => i.quantity_fulfilled === 0))
+  );
   
-  // Get orders in progress (orders with some items)
-  const ordersInProgress = orders.filter(o => o.status === "open" && o.items && o.items.length > 0);
+  // Get orders in progress (orders with some items fulfilled)
+  const ordersInProgress = orders.filter(o =>
+    o.status === "open" &&
+    o.items &&
+    o.items.length > 0 &&
+    o.items.some(i => i.quantity_fulfilled > 0)
+  );
 
   // Subscribe to realtime updates for orders
   useEffect(() => {
@@ -488,7 +496,7 @@ const Sales = () => {
                   <div className="grid grid-cols-12 gap-4 p-4 bg-secondary/50 font-medium text-sm">
                     <div className="col-span-4">Item</div>
                     <div className="col-span-2">SKU</div>
-                    <div className="col-span-2 text-center">Cantidad</div>
+                    <div className="col-span-2 text-center">Progreso (E/R)</div>
                     <div className="col-span-2 text-center">Estado</div>
                     <div className="col-span-2 text-center">Acciones</div>
                   </div>
@@ -496,6 +504,9 @@ const Sales = () => {
                   <div className="divide-y">
                     {currentOrder.items.map((item) => {
                       const { partName, sku } = getPartInfo(item.part_id);
+                      const isFulfilled = item.quantity_fulfilled >= item.quantity_required;
+                      const isPartiallyFulfilled = item.quantity_fulfilled > 0 && item.quantity_fulfilled < item.quantity_required;
+
                       return (
                         <div key={item.id} className="grid grid-cols-12 gap-4 p-4 items-center text-sm">
                           <div className="col-span-4">
@@ -505,12 +516,21 @@ const Sales = () => {
                             <p className="text-xs text-muted-foreground font-mono">{sku}</p>
                           </div>
                           <div className="col-span-2 text-center font-medium">
-                            {item.quantity_fulfilled}
+                            <span className={isFulfilled ? "text-green-600" : "text-amber-600"}>
+                              {item.quantity_fulfilled}
+                            </span>
+                            <span className="text-muted-foreground"> / {item.quantity_required}</span>
                           </div>
                           <div className="col-span-2 flex justify-center">
-                            <div className="flex items-center gap-2 text-green-500 font-medium">
-                              <CheckCircle className="w-4 h-4" /> Entregado
-                            </div>
+                            {isFulfilled ? (
+                              <div className="flex items-center gap-2 text-green-500 font-medium">
+                                <CheckCircle className="w-4 h-4" /> Entregado
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-amber-500 font-medium">
+                                <AlertTriangle className="w-4 h-4" /> Pendiente
+                              </div>
+                            )}
                           </div>
                           <div className="col-span-2 flex justify-center">
                             <AlertDialog>
