@@ -102,6 +102,10 @@ const Technician = () => {
         department: selectedDepartment,
         supplierName: supplierName,
         projectId: selectedProjectId,
+        items: requestItems.map(item => ({
+          partId: item.partId,
+          quantity: item.quantity
+        })),
       });
 
       const project = projects.find(p => p.id === selectedProjectId);
