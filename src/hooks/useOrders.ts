@@ -97,28 +97,11 @@ export const useCreateOrder = () => {
       projectId: string;
       items?: { partId: string; quantity: number }[];
     }) => {
-      // Generate OR number client-side since trigger might not work with typing
-      const { data: lastOrder } = await supabase
-        .from("orders")
-        .select("or_number")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let nextNum = 1;
-      if (lastOrder?.or_number) {
-        const parts = lastOrder.or_number.split("-");
-        const lastNum = parseInt(parts[2], 10);
-        if (!isNaN(lastNum)) nextNum = lastNum + 1;
-      }
-      
-      const year = new Date().getFullYear();
-      const orNumber = `OR-${year}-${nextNum.toString().padStart(3, "0")}`;
-
+      // Use database trigger for atomic OR number generation by passing empty string
       const { data, error } = await supabase
         .from("orders")
         .insert({
-          or_number: orNumber,
+          or_number: "", // Trigger will generate the actual number
           technician: orderData.technician,
           department: orderData.department,
           supplier_name: orderData.supplierName || null,
@@ -168,75 +151,15 @@ export const useAddItemToOrder = () => {
       quantity: number;
       assignedBy: string;
     }) => {
-      // First, check stock
-      const { data: part, error: partError } = await supabase
-        .from("parts")
-        .select("stock")
-        .eq("id", data.partId)
-        .single();
+      // Use atomic RPC call
+      const { error } = await supabase.rpc("add_item_to_order_atomic", {
+        p_order_id: data.orderId,
+        p_part_id: data.partId,
+        p_quantity: data.quantity,
+        p_assigned_by: data.assignedBy,
+      });
 
-      if (partError) throw partError;
-      if (part.stock < data.quantity) {
-        throw new Error("Stock insuficiente");
-      }
-
-      // Deduct stock
-      const { error: stockError } = await supabase
-        .from("parts")
-        .update({ stock: part.stock - data.quantity })
-        .eq("id", data.partId);
-
-      if (stockError) throw stockError;
-
-      // Check if item already exists in order
-      const { data: existingItem } = await supabase
-        .from("order_items")
-        .select("*")
-        .eq("order_id", data.orderId)
-        .eq("part_id", data.partId)
-        .maybeSingle();
-
-      if (existingItem) {
-        // Calculate update values
-        const newQuantityFulfilled = existingItem.quantity_fulfilled + data.quantity;
-        const newQuantityRequired = Math.max(existingItem.quantity_required, newQuantityFulfilled);
-
-        // Update existing item
-        const { error: updateError } = await supabase
-          .from("order_items")
-          .update({
-            quantity_required: newQuantityRequired,
-            quantity_fulfilled: newQuantityFulfilled,
-          })
-          .eq("id", existingItem.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Insert new item
-        const { error: insertError } = await supabase
-          .from("order_items")
-          .insert({
-            order_id: data.orderId,
-            part_id: data.partId,
-            quantity_required: data.quantity,
-            quantity_fulfilled: data.quantity,
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      // Add fulfillment log
-      const { error: logError } = await supabase
-        .from("fulfillment_logs")
-        .insert({
-          order_id: data.orderId,
-          part_id: data.partId,
-          quantity: data.quantity,
-          operation_type: "add",
-          assigned_by: data.assignedBy,
-        });
-
-      if (logError) throw logError;
+      if (error) throw error;
 
       return true;
     },
@@ -258,61 +181,15 @@ export const useRemoveItemFromOrder = () => {
       quantity: number;
       removedBy: string;
     }) => {
-      // Return stock
-      const { data: part, error: partError } = await supabase
-        .from("parts")
-        .select("stock")
-        .eq("id", data.partId)
-        .single();
+      // Use atomic RPC call
+      const { error } = await supabase.rpc("remove_item_from_order_atomic", {
+        p_order_id: data.orderId,
+        p_part_id: data.partId,
+        p_quantity: data.quantity,
+        p_removed_by: data.removedBy,
+      });
 
-      if (partError) throw partError;
-
-      const { error: stockError } = await supabase
-        .from("parts")
-        .update({ stock: part.stock + data.quantity })
-        .eq("id", data.partId);
-
-      if (stockError) throw stockError;
-
-      // Update or remove order item
-      const { data: existingItem } = await supabase
-        .from("order_items")
-        .select("*")
-        .eq("order_id", data.orderId)
-        .eq("part_id", data.partId)
-        .single();
-
-      if (existingItem) {
-        const newQty = existingItem.quantity_fulfilled - data.quantity;
-        if (newQty <= 0) {
-          // Remove item completely
-          await supabase
-            .from("order_items")
-            .delete()
-            .eq("id", existingItem.id);
-        } else {
-          await supabase
-            .from("order_items")
-            .update({
-              quantity_required: newQty,
-              quantity_fulfilled: newQty,
-            })
-            .eq("id", existingItem.id);
-        }
-      }
-
-      // Add removal log (negative quantity)
-      const { error: logError } = await supabase
-        .from("fulfillment_logs")
-        .insert({
-          order_id: data.orderId,
-          part_id: data.partId,
-          quantity: -data.quantity,
-          operation_type: "remove",
-          assigned_by: data.removedBy,
-        });
-
-      if (logError) throw logError;
+      if (error) throw error;
 
       return true;
     },
