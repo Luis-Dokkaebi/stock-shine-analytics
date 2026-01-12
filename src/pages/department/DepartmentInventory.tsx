@@ -4,7 +4,7 @@ import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { DepartmentHeader } from "@/components/department/DepartmentHeader";
 import { DepartmentInventoryTable } from "@/components/department/DepartmentInventoryTable";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { Package, DollarSign, TrendingUp, AlertTriangle, Plus, Download, Bell, X } from "lucide-react";
+import { Package, DollarSign, TrendingUp, AlertTriangle, Plus, Download, Bell, X, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,9 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useDepartmentParts, useAddDepartmentStock } from "@/hooks/useDepartmentParts";
+import { useDepartmentParts, useAddDepartmentStock, useCreateDepartmentPart } from "@/hooks/useDepartmentParts";
 import { useUnresolvedDepartmentStockAlerts, useResolveDepartmentStockAlert } from "@/hooks/useDepartmentStockAlerts";
 import { getDepartmentConfig } from "@/config/departments";
 
@@ -32,10 +39,25 @@ const DepartmentInventory = () => {
   const { data: unresolvedAlerts = [] } = useUnresolvedDepartmentStockAlerts(config.dbKey);
   const addStockMutation = useAddDepartmentStock(config.dbKey);
   const resolveAlertMutation = useResolveDepartmentStockAlert(config.dbKey);
+  const createPartMutation = useCreateDepartmentPart(config.dbKey);
   
+  // Estado para entrada de stock
   const [sku, setSku] = useState("");
   const [qty, setQty] = useState(1);
   const [open, setOpen] = useState(false);
+  
+  // Estado para nueva pieza
+  const [newPartOpen, setNewPartOpen] = useState(false);
+  const [newPart, setNewPart] = useState({
+    sku: "",
+    name: "",
+    category: "General",
+    stock: 0,
+    unit_cost: 0,
+    sale_price: 0,
+    rotation: "medium" as "high" | "medium" | "low",
+    days_in_warehouse: 0,
+  });
   
   const inventory = partsData.map(part => ({
     id: part.id,
@@ -68,6 +90,36 @@ const DepartmentInventory = () => {
     }
   };
 
+  const handleCreatePart = async () => {
+    if (!newPart.sku.trim() || !newPart.name.trim()) {
+      toast.error("SKU y nombre son requeridos");
+      return;
+    }
+    
+    // Verificar si el SKU ya existe en este departamento
+    const existingSku = partsData.find(p => p.sku.toLowerCase() === newPart.sku.toLowerCase());
+    if (existingSku) {
+      toast.error("Este SKU ya existe en el departamento");
+      return;
+    }
+    
+    createPartMutation.mutate(newPart, {
+      onSuccess: () => {
+        setNewPartOpen(false);
+        setNewPart({
+          sku: "",
+          name: "",
+          category: "General",
+          stock: 0,
+          unit_cost: 0,
+          sale_price: 0,
+          rotation: "medium",
+          days_in_warehouse: 0,
+        });
+      }
+    });
+  };
+
   const criticalItems = inventory.filter(item => item.stock === 0 || item.stock <= 2);
 
   return (
@@ -81,6 +133,116 @@ const DepartmentInventory = () => {
           Exportar
         </Button>
 
+        {/* Botón para crear nueva pieza */}
+        <Dialog open={newPartOpen} onOpenChange={setNewPartOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <PackagePlus className="w-4 h-4" />
+              Nueva Pieza
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Alta de Nueva Pieza - {config.name}</DialogTitle>
+              <DialogDescription>
+                Registrar una nueva pieza en el inventario del departamento.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-sku" className="text-right">SKU *</Label>
+                <Input
+                  id="new-sku"
+                  value={newPart.sku}
+                  onChange={(e) => setNewPart({...newPart, sku: e.target.value})}
+                  className="col-span-3"
+                  placeholder="ej: HVAC-001"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-name" className="text-right">Nombre *</Label>
+                <Input
+                  id="new-name"
+                  value={newPart.name}
+                  onChange={(e) => setNewPart({...newPart, name: e.target.value})}
+                  className="col-span-3"
+                  placeholder="Descripción del producto"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-category" className="text-right">Categoría</Label>
+                <Input
+                  id="new-category"
+                  value={newPart.category}
+                  onChange={(e) => setNewPart({...newPart, category: e.target.value})}
+                  className="col-span-3"
+                  placeholder="ej: Refacciones, Herramientas"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-stock" className="text-right">Stock Inicial</Label>
+                <Input
+                  id="new-stock"
+                  type="number"
+                  value={newPart.stock}
+                  onChange={(e) => setNewPart({...newPart, stock: Number(e.target.value)})}
+                  className="col-span-3"
+                  min={0}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-cost" className="text-right">Costo Unitario</Label>
+                <Input
+                  id="new-cost"
+                  type="number"
+                  value={newPart.unit_cost}
+                  onChange={(e) => setNewPart({...newPart, unit_cost: Number(e.target.value)})}
+                  className="col-span-3"
+                  min={0}
+                  step={0.01}
+                  placeholder="$0.00"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-price" className="text-right">Precio Venta</Label>
+                <Input
+                  id="new-price"
+                  type="number"
+                  value={newPart.sale_price}
+                  onChange={(e) => setNewPart({...newPart, sale_price: Number(e.target.value)})}
+                  className="col-span-3"
+                  min={0}
+                  step={0.01}
+                  placeholder="$0.00"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-rotation" className="text-right">Rotación</Label>
+                <Select
+                  value={newPart.rotation}
+                  onValueChange={(value: "high" | "medium" | "low") => setNewPart({...newPart, rotation: value})}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccionar rotación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">Alta</SelectItem>
+                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="low">Baja</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setNewPartOpen(false)}>Cancelar</Button>
+              <Button onClick={handleCreatePart} disabled={createPartMutation.isPending}>
+                {createPartMutation.isPending ? "Guardando..." : "Crear Pieza"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Botón para entrada de stock existente */}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2 gradient-primary text-primary-foreground">
