@@ -40,11 +40,12 @@ export const useParts = () => {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: ["parts"],
+    queryKey: ["parts", "general"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("parts")
         .select("*")
+        .eq("department", "general")
         .order("name");
 
       if (error) throw error;
@@ -108,10 +109,10 @@ export const useCreatePart = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (part: Omit<DbPart, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (part: Omit<DbPart, "id" | "created_at" | "updated_at"> & { department?: string }) => {
       const { data, error } = await supabase
         .from("parts")
-        .insert(part)
+        .insert({ ...part, department: part.department || "general" })
         .select()
         .single();
 
