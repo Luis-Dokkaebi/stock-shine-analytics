@@ -250,8 +250,7 @@ const Technician = () => {
                   <SelectContent>
                     {inventory.map(part => (
                       <SelectItem key={part.id} value={part.id}>
-                        {part.name} ({part.sku}) - Stock: {part.stock}
-                        {part.stock === 0 && " ⚠️"}
+                        {part.name} ({part.sku})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -298,7 +297,7 @@ const Technician = () => {
                      <ul className="mt-2 text-sm space-y-1">
                        {itemsWithLowStock.map(item => (
                          <li key={item.partId} className="text-amber-700">
-                           • {item.name}: Solicitado {item.quantity}, Disponible {item.currentStock}
+                           • {item.name}: Solicitado {item.quantity}
                          </li>
                        ))}
                      </ul>
@@ -307,10 +306,9 @@ const Technician = () => {
 
                  <div className="rounded-md border">
                     <div className="grid grid-cols-12 gap-4 p-3 bg-secondary/50 text-sm font-medium">
-                      <div className="col-span-5">Item</div>
+                      <div className="col-span-7">Item</div>
                       <div className="col-span-2">SKU</div>
                       <div className="col-span-2 text-center">Cant.</div>
-                      <div className="col-span-2 text-center">Stock</div>
                       <div className="col-span-1"></div>
                     </div>
                     <div className="divide-y">
@@ -321,15 +319,12 @@ const Technician = () => {
                             key={item.partId} 
                             className={`grid grid-cols-12 gap-4 p-3 items-center text-sm ${isLowStock ? 'bg-amber-500/5' : ''}`}
                           >
-                            <div className="col-span-5 font-medium flex items-center gap-2">
+                            <div className="col-span-7 font-medium flex items-center gap-2">
                               {item.name}
                               {isLowStock && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                             </div>
                             <div className="col-span-2 text-xs text-muted-foreground font-mono">{item.sku}</div>
                             <div className="col-span-2 text-center">{item.quantity}</div>
-                            <div className={`col-span-2 text-center ${isLowStock ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
-                              {item.currentStock}
-                            </div>
                             <div className="col-span-1 text-right">
                               <Button
                                 variant="ghost"
