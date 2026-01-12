@@ -28,20 +28,37 @@ const almacenSubItems = [
   { icon: FileText, label: "Reportes", path: "/reports" },
 ];
 
+// Each department has the same sub-items structure
+const getDepartmentSubItems = (deptKey: string) => [
+  { icon: Wrench, label: "Zona Técnica", path: `/departments/${deptKey}/technician` },
+  { icon: Package, label: "Inventario", path: `/departments/${deptKey}/inventory` },
+  { icon: BarChart3, label: "Análisis", path: `/departments/${deptKey}/sales` },
+  { icon: DollarSign, label: "Costos Operativos", path: `/departments/${deptKey}/costs` },
+  { icon: FileText, label: "Reportes", path: `/departments/${deptKey}/reports` },
+];
+
 const departments = [
-  { icon: Snowflake, label: "HVAC", path: "/departments/hvac" },
-  { icon: Zap, label: "Electromecánico", path: "/departments/electro" },
-  { icon: Hammer, label: "Herrería", path: "/departments/herreria" },
-  { icon: Cog, label: "Maquinaria", path: "/departments/maquinaria" },
-  { icon: ShoppingBag, label: "Producto", path: "/departments/producto" },
+  { icon: Snowflake, label: "HVAC", key: "hvac" },
+  { icon: Zap, label: "Electromecánico", key: "electro" },
+  { icon: Hammer, label: "Herrería", key: "herreria" },
+  { icon: Cog, label: "Maquinaria", key: "maquinaria" },
+  { icon: ShoppingBag, label: "Producto", key: "producto" },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const [almacenOpen, setAlmacenOpen] = useState(true);
-  const [departmentsOpen, setDepartmentsOpen] = useState(true);
+  const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({});
 
   const isAlmacenActive = almacenSubItems.some(item => location.pathname === item.path);
+
+  const toggleDepartment = (key: string) => {
+    setOpenDepartments(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const isDepartmentActive = (deptKey: string) => {
+    return location.pathname.startsWith(`/departments/${deptKey}`);
+  };
 
   return (
     <motion.aside 
@@ -144,48 +161,75 @@ export function Sidebar() {
           )}
         </motion.div>
 
-        {/* Departments Section */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <button
-            onClick={() => setDepartmentsOpen(!departmentsOpen)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
-          >
-            <Settings className="w-5 h-5" />
-            <span className="font-medium flex-1 text-left">Departamentos</span>
-            {departmentsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
+        {/* Departments Section - Each with sub-items */}
+        {departments.map((dept, deptIndex) => {
+          const subItems = getDepartmentSubItems(dept.key);
+          const isOpen = openDepartments[dept.key];
+          const isActive = isDepartmentActive(dept.key);
 
-          {departmentsOpen && (
-            <div className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-2">
-              {departments.map((dept, index) => (
-                <motion.div
-                  key={dept.path}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Link
-                    to={dept.path}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground group"
-                  >
-                    <dept.icon className="w-4 h-4" />
-                    <span>{dept.label}</span>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
+          return (
+            <motion.div
+              key={dept.key}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 + deptIndex * 0.05 }}
+            >
+              <button
+                onClick={() => toggleDepartment(dept.key)}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300
+                  ${isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  }
+                `}
+              >
+                <dept.icon className={`w-5 h-5 ${isActive ? "text-primary" : ""}`} />
+                <span className="font-medium flex-1 text-left">{dept.label}</span>
+                {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+
+              {isOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-2">
+                  {subItems.map((item, index) => {
+                    const isItemActive = location.pathname === item.path;
+                    return (
+                      <motion.div
+                        key={item.path}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <Link
+                          to={item.path}
+                          className={`
+                            flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 text-sm group
+                            ${isItemActive 
+                              ? "bg-primary/10 text-primary" 
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+                            }
+                          `}
+                        >
+                          <item.icon className={`w-4 h-4 ${isItemActive ? "text-primary" : ""}`} />
+                          <span>{item.label}</span>
+                          {isItemActive && (
+                            <motion.div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
 
         {/* Settings */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
         >
           <Link
             to="/settings"

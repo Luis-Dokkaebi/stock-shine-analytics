@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           assigned_at: string
           assigned_by: string
+          department: string
           id: string
           notes: string | null
           operation_type: string
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           assigned_at?: string
           assigned_by: string
+          department?: string
           id?: string
           notes?: string | null
           operation_type: string
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           assigned_at?: string
           assigned_by?: string
+          department?: string
           id?: string
           notes?: string | null
           operation_type?: string
@@ -156,6 +159,7 @@ export type Database = {
           category: string
           created_at: string
           days_in_warehouse: number | null
+          department: string
           id: string
           name: string
           rotation: string | null
@@ -169,6 +173,7 @@ export type Database = {
           category: string
           created_at?: string
           days_in_warehouse?: number | null
+          department?: string
           id?: string
           name: string
           rotation?: string | null
@@ -182,6 +187,7 @@ export type Database = {
           category?: string
           created_at?: string
           days_in_warehouse?: number | null
+          department?: string
           id?: string
           name?: string
           rotation?: string | null
@@ -217,6 +223,7 @@ export type Database = {
       stock_alerts: {
         Row: {
           created_at: string
+          department: string
           id: string
           or_number: string
           part_id: string
@@ -229,6 +236,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          department?: string
           id?: string
           or_number: string
           part_id: string
@@ -241,6 +249,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          department?: string
           id?: string
           or_number?: string
           part_id?: string
