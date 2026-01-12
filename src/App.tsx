@@ -13,8 +13,14 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Technician from "./pages/Technician";
 import OrderExitSlip from "./pages/OrderExitSlip";
-import Department from "./pages/Department";
 import PersonalControl from "./pages/PersonalControl";
+
+// Department pages
+import DepartmentInventory from "./pages/department/DepartmentInventory";
+import DepartmentTechnician from "./pages/department/DepartmentTechnician";
+import DepartmentSales from "./pages/department/DepartmentSales";
+import DepartmentCosts from "./pages/department/DepartmentCosts";
+import DepartmentReports from "./pages/department/DepartmentReports";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +32,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Main routes */}
             <Route path="/" element={<Index />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/sales" element={<Sales />} />
@@ -34,8 +41,15 @@ const App = () => (
             <Route path="/costs" element={<Costs />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/departments/:dept" element={<Department />} />
             <Route path="/personal/:module" element={<PersonalControl />} />
+            
+            {/* Department routes - each department has full functionality */}
+            <Route path="/departments/:dept/inventory" element={<DepartmentInventory />} />
+            <Route path="/departments/:dept/technician" element={<DepartmentTechnician />} />
+            <Route path="/departments/:dept/sales" element={<DepartmentSales />} />
+            <Route path="/departments/:dept/costs" element={<DepartmentCosts />} />
+            <Route path="/departments/:dept/reports" element={<DepartmentReports />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
