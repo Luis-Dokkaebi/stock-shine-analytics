@@ -54,48 +54,65 @@ export const generateOrderPdf = ({ order, inventory, projects, type = "exit" }: 
   
   const infoY = 45;
   const leftCol = 15;
-  const rightCol = 110;
+  const rightCol = 115;
+  const labelWidth = 28;
+  const rightLabelWidth = 22;
 
-  // Left column
+  // Left column - Row 1
   doc.text("Remisión No.:", leftCol, infoY);
   doc.setFont("helvetica", "normal");
-  doc.text(order.or_number, leftCol + 30, infoY);
+  doc.text(order.or_number, leftCol + labelWidth, infoY);
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Técnico:", leftCol, infoY + 7);
-  doc.setFont("helvetica", "normal");
-  doc.text(order.technician.toUpperCase(), leftCol + 30, infoY + 7);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Departamento:", leftCol, infoY + 14);
-  doc.setFont("helvetica", "normal");
-  doc.text(order.department.toUpperCase(), leftCol + 30, infoY + 14);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Proyecto:", leftCol, infoY + 21);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${order.projectId} - ${project?.name || "N/A"}`, leftCol + 30, infoY + 21);
-
-  // Right column
+  // Right column - Row 1
   doc.setFont("helvetica", "bold");
   doc.text("Fecha:", rightCol, infoY);
   doc.setFont("helvetica", "normal");
-  doc.text(currentDate.toLocaleDateString(), rightCol + 25, infoY);
+  doc.text(currentDate.toLocaleDateString(), rightCol + rightLabelWidth, infoY);
 
+  // Left column - Row 2
+  doc.setFont("helvetica", "bold");
+  doc.text("Técnico:", leftCol, infoY + 7);
+  doc.setFont("helvetica", "normal");
+  doc.text(order.technician.toUpperCase(), leftCol + labelWidth, infoY + 7);
+
+  // Right column - Row 2
   doc.setFont("helvetica", "bold");
   doc.text("Hora:", rightCol, infoY + 7);
   doc.setFont("helvetica", "normal");
-  doc.text(currentDate.toLocaleTimeString(), rightCol + 25, infoY + 7);
+  doc.text(currentDate.toLocaleTimeString(), rightCol + rightLabelWidth, infoY + 7);
 
+  // Left column - Row 3
+  doc.setFont("helvetica", "bold");
+  doc.text("Departamento:", leftCol, infoY + 14);
+  doc.setFont("helvetica", "normal");
+  doc.text(order.department.toUpperCase(), leftCol + labelWidth + 5, infoY + 14);
+
+  // Right column - Row 3
   doc.setFont("helvetica", "bold");
   doc.text("Proveedor:", rightCol, infoY + 14);
   doc.setFont("helvetica", "normal");
-  doc.text((order.supplierName || "N/A").toUpperCase(), rightCol + 25, infoY + 14);
+  doc.text((order.supplierName || "N/A").toUpperCase(), rightCol + rightLabelWidth + 3, infoY + 14);
 
+  // Full width - Row 4: Project (truncate if too long)
+  doc.setFont("helvetica", "bold");
+  doc.text("Proyecto:", leftCol, infoY + 21);
+  doc.setFont("helvetica", "normal");
+  const projectText = project?.name || "N/A";
+  const maxProjectWidth = 65;
+  const truncatedProject = doc.getTextWidth(projectText) > maxProjectWidth 
+    ? projectText.substring(0, 30) + "..." 
+    : projectText;
+  doc.text(truncatedProject.toUpperCase(), leftCol + labelWidth, infoY + 21);
+
+  // Right column - Row 4: Agent (truncate if too long)
   doc.setFont("helvetica", "bold");
   doc.text("Agente:", rightCol, infoY + 21);
   doc.setFont("helvetica", "normal");
-  doc.text(agentDisplay.toUpperCase(), rightCol + 25, infoY + 21);
+  const maxAgentWidth = 50;
+  const truncatedAgent = doc.getTextWidth(agentDisplay) > maxAgentWidth 
+    ? agentDisplay.substring(0, 20) + "..." 
+    : agentDisplay;
+  doc.text(truncatedAgent.toUpperCase(), rightCol + rightLabelWidth, infoY + 21);
 
   // Divider line
   doc.setDrawColor(200, 200, 200);
