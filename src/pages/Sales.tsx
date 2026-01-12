@@ -25,6 +25,7 @@ import { useParts } from "@/hooks/useParts";
 import { useProjects } from "@/hooks/useProjects";
 import { useUnresolvedStockAlerts, useResolveStockAlert } from "@/hooks/useStockAlerts";
 import { supabase } from "@/integrations/supabase/client";
+import { AnimatedPage } from "@/components/layout/AnimatedPage";
 
 const Sales = () => {
   const { data: orders = [], isLoading: ordersLoading, refetch: refetchOrders } = useOrders();
@@ -238,12 +239,13 @@ const Sales = () => {
 
   return (
     <MainLayout>
-      <PageHeader 
-        title="Gestión de Almacén"
-        subtitle="Buscar Órdenes de Trabajo y agregar herramientas"
-      />
+      <AnimatedPage>
+        <PageHeader
+          title="Gestión de Almacén"
+          subtitle="Buscar Órdenes de Trabajo y agregar herramientas"
+        />
 
-      <div className="grid gap-6">
+        <div className="grid gap-6">
         {/* Pending Orders Section - New requests from Zona Técnica */}
         {pendingOrders.length > 0 && (
           <DashboardCard 
@@ -613,6 +615,7 @@ const Sales = () => {
           </>
         )}
       </div>
+      </AnimatedPage>
     </MainLayout>
   );
 };
