@@ -464,7 +464,7 @@ const Sales = () => {
             <DashboardCard 
               title="Items Entregados"
               action={
-                currentOrder.items && currentOrder.items.length > 0 ? (
+              currentOrder.items && currentOrder.items.length > 0 ? (
                   <div className="flex gap-2">
                     {currentOrder.status === "open" && (
                       <Button 
@@ -475,13 +475,13 @@ const Sales = () => {
                         Finalizar Carga
                       </Button>
                     )}
-                    {currentOrder.status === "completed" && (
+                    {currentOrder.status === "closed" && (
                       <Button 
                         onClick={handleDownloadPdf}
                         className="bg-primary hover:bg-primary/90"
                       >
                         <FileDown className="w-4 h-4 mr-2" />
-                        Descargar Orden de Salida PDF
+                        Reimprimir Orden de Salida
                       </Button>
                     )}
                   </div>
