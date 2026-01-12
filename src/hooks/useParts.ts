@@ -71,6 +71,39 @@ export const useUpdatePartStock = () => {
   });
 };
 
+export const useAddStock = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ partId, quantity }: { partId: string; quantity: number }) => {
+      // First get current stock
+      const { data: part, error: fetchError } = await supabase
+        .from("parts")
+        .select("stock")
+        .eq("id", partId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newStock = (part?.stock || 0) + quantity;
+
+      const { error } = await supabase
+        .from("parts")
+        .update({ stock: newStock })
+        .eq("id", partId);
+
+      if (error) throw error;
+      return newStock;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["parts"] });
+    },
+    onError: (error) => {
+      toast.error(`Error al agregar stock: ${error.message}`);
+    },
+  });
+};
+
 export const useCreatePart = () => {
   const queryClient = useQueryClient();
 
