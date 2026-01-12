@@ -151,21 +151,77 @@ export const useAddItemToOrder = () => {
       quantity: number;
       assignedBy: string;
     }) => {
-      // Use atomic RPC call
-      const { error } = await supabase.rpc("add_item_to_order_atomic", {
-        p_order_id: data.orderId,
-        p_part_id: data.partId,
-        p_quantity: data.quantity,
-        p_assigned_by: data.assignedBy,
-      });
+      // Get current part stock
+      const { data: part, error: partError } = await supabase
+        .from("parts")
+        .select("stock")
+        .eq("id", data.partId)
+        .single();
 
-      if (error) throw error;
+      if (partError) throw partError;
+      if (part.stock < data.quantity) {
+        throw new Error("Stock insuficiente");
+      }
+
+      // Deduct from stock
+      const { error: stockError } = await supabase
+        .from("parts")
+        .update({ stock: part.stock - data.quantity })
+        .eq("id", data.partId);
+
+      if (stockError) throw stockError;
+
+      // Update or insert order item
+      const { data: existingItem } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", data.orderId)
+        .eq("part_id", data.partId)
+        .maybeSingle();
+
+      if (existingItem) {
+        const { error: updateError } = await supabase
+          .from("order_items")
+          .update({ 
+            quantity_fulfilled: existingItem.quantity_fulfilled + data.quantity 
+          })
+          .eq("id", existingItem.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("order_items")
+          .insert({
+            order_id: data.orderId,
+            part_id: data.partId,
+            quantity_required: data.quantity,
+            quantity_fulfilled: data.quantity,
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Log the fulfillment
+      const { error: logError } = await supabase
+        .from("fulfillment_logs")
+        .insert({
+          order_id: data.orderId,
+          part_id: data.partId,
+          quantity: data.quantity,
+          operation_type: "add",
+          assigned_by: data.assignedBy,
+        });
+
+      if (logError) throw logError;
 
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["parts"] });
+    },
+    onError: (error) => {
+      toast.error(`Error al agregar item: ${error.message}`);
     },
   });
 };
@@ -181,21 +237,66 @@ export const useRemoveItemFromOrder = () => {
       quantity: number;
       removedBy: string;
     }) => {
-      // Use atomic RPC call
-      const { error } = await supabase.rpc("remove_item_from_order_atomic", {
-        p_order_id: data.orderId,
-        p_part_id: data.partId,
-        p_quantity: data.quantity,
-        p_removed_by: data.removedBy,
-      });
+      // Get current order item
+      const { data: orderItem, error: itemError } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", data.orderId)
+        .eq("part_id", data.partId)
+        .single();
 
-      if (error) throw error;
+      if (itemError) throw itemError;
+      if (orderItem.quantity_fulfilled < data.quantity) {
+        throw new Error("Cantidad a remover mayor que la asignada");
+      }
+
+      // Return to stock
+      const { data: part, error: partError } = await supabase
+        .from("parts")
+        .select("stock")
+        .eq("id", data.partId)
+        .single();
+
+      if (partError) throw partError;
+
+      const { error: stockError } = await supabase
+        .from("parts")
+        .update({ stock: part.stock + data.quantity })
+        .eq("id", data.partId);
+
+      if (stockError) throw stockError;
+
+      // Update order item
+      const { error: updateError } = await supabase
+        .from("order_items")
+        .update({ 
+          quantity_fulfilled: orderItem.quantity_fulfilled - data.quantity 
+        })
+        .eq("id", orderItem.id);
+
+      if (updateError) throw updateError;
+
+      // Log the removal
+      const { error: logError } = await supabase
+        .from("fulfillment_logs")
+        .insert({
+          order_id: data.orderId,
+          part_id: data.partId,
+          quantity: data.quantity,
+          operation_type: "remove",
+          assigned_by: data.removedBy,
+        });
+
+      if (logError) throw logError;
 
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["parts"] });
+    },
+    onError: (error) => {
+      toast.error(`Error al remover item: ${error.message}`);
     },
   });
 };
