@@ -211,7 +211,7 @@ const Sales = () => {
     
     const { error } = await supabase
       .from("orders")
-      .update({ status: "completed" })
+      .update({ status: "closed" })
       .eq("id", currentOrder.id);
 
     if (error) {
@@ -219,7 +219,8 @@ const Sales = () => {
       return;
     }
 
-    toast.success("Orden finalizada correctamente. Ahora puede descargar el PDF.");
+    toast.success("Orden finalizada correctamente");
+    handleDownloadPdf();
     refetchOrders();
   };
 
