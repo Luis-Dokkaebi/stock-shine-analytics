@@ -13,6 +13,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useParts } from "@/hooks/useParts";
 import { useCreateOrder, DbOrder } from "@/hooks/useOrders";
 import { useCreateStockAlert } from "@/hooks/useStockAlerts";
+import { AnimatedPage } from "@/components/layout/AnimatedPage";
 
 interface RequestItem {
   partId: string;
@@ -171,12 +172,13 @@ const Technician = () => {
 
   return (
     <MainLayout>
-      <PageHeader
-        title="Zona Técnica"
-        subtitle="Crear Órdenes de Trabajo y generar solicitudes de herramientas"
-      />
+      <AnimatedPage>
+        <PageHeader
+          title="Zona Técnica"
+          subtitle="Crear Órdenes de Trabajo y generar solicitudes de herramientas"
+        />
 
-      <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
         {/* Order Form */}
         <div className="space-y-6">
           <DashboardCard title="Nueva Orden de Trabajo">
@@ -364,6 +366,7 @@ const Technician = () => {
           </DashboardCard>
         </div>
       </div>
+      </AnimatedPage>
     </MainLayout>
   );
 };

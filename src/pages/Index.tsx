@@ -19,10 +19,10 @@ import {
   Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import holtmontLogo from "@/assets/holtmont-logo.png";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedPage } from "@/components/layout/AnimatedPage";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -110,27 +110,19 @@ const Index = () => {
 
   return (
     <MainLayout>
-      {/* Header with Logo */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-center mb-8"
-      >
-        <img 
-          src={holtmontLogo} 
-          alt="Holtmont" 
-          className="h-16 object-contain"
-        />
-      </motion.div>
+      <AnimatedPage>
+        {/* Header with Logo */}
+        <div className="flex items-center justify-center mb-8">
+          <img
+            src={holtmontLogo}
+            alt="Holtmont"
+            className="h-16 object-contain"
+          />
+        </div>
 
-      {/* Almacén General - Main Section with Subcategories */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-8"
-      >
-        {/* Almacén General Header */}
+        {/* Almacén General - Main Section with Subcategories */}
+        <div className="mb-8">
+          {/* Almacén General Header */}
         <div className="flex items-center gap-3 p-4 rounded-t-xl bg-primary/10 border border-primary/20 border-b-0">
           <div className="p-3 rounded-lg bg-primary">
             <Warehouse className="w-8 h-8 text-primary-foreground" />
@@ -143,82 +135,65 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Subcategories Grid */}
-        <div className="p-4 rounded-b-xl border border-primary/20 bg-card/50">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {almacenSubcategories.map((module, index) => (
-              <motion.div
-                key={module.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + index * 0.05 }}
-                onClick={() => navigate(module.path)}
-                className="cursor-pointer group"
-              >
-                <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:-translate-y-1">
-                  <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${module.color} opacity-10 rounded-bl-full transition-all duration-300 group-hover:opacity-20`} />
-                  
-                  <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${module.color} text-white mb-3`}>
-                    <module.icon className="w-5 h-5" />
-                  </div>
-                  
-                  <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
-                    {module.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {module.description}
-                  </p>
-                  
-                  <div className="flex items-center text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-2">
-                    Acceder
-                    <ArrowRight className="w-3 h-3 ml-1" />
+          {/* Subcategories Grid */}
+          <div className="p-4 rounded-b-xl border border-primary/20 bg-card/50">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {almacenSubcategories.map((module) => (
+                <div
+                  key={module.title}
+                  onClick={() => navigate(module.path)}
+                  className="cursor-pointer group"
+                >
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:-translate-y-1">
+                    <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${module.color} opacity-10 rounded-bl-full transition-all duration-300 group-hover:opacity-20`} />
+
+                    <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${module.color} text-white mb-3`}>
+                      <module.icon className="w-5 h-5" />
+                    </div>
+
+                    <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
+                      {module.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {module.description}
+                    </p>
+
+                    <div className="flex items-center text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-2">
+                      Acceder
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </div>
                   </div>
                 </div>
-              </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Departments Section */}
+        <div className="mb-8">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+            Departamentos
+          </h3>
+          <div className="flex flex-wrap gap-3">
+            {departments.map((dept) => (
+              <div key={dept.name}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  onClick={() => navigate(dept.path)}
+                >
+                  <dept.icon className="w-5 h-5" />
+                  {dept.name}
+                </Button>
+              </div>
             ))}
           </div>
         </div>
-      </motion.div>
 
-      {/* Departments Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="mb-8"
-      >
-        <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-          Departamentos
-        </h3>
-        <div className="flex flex-wrap gap-3">
-          {departments.map((dept, index) => (
-            <motion.div
-              key={dept.name}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.45 + index * 0.05 }}
-            >
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
-                onClick={() => navigate(dept.path)}
-              >
-                <dept.icon className="w-5 h-5" />
-                {dept.name}
-              </Button>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Control Personal Directo Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        {/* Control Personal Header */}
+        {/* Control Personal Directo Section */}
+        <div>
+          {/* Control Personal Header */}
         <div className="flex items-center gap-3 p-4 rounded-t-xl bg-secondary/50 border border-border border-b-0">
           <div className="p-3 rounded-lg bg-secondary">
             <Users className="w-8 h-8 text-foreground" />
@@ -232,47 +207,45 @@ const Index = () => {
           <Badge variant="outline" className="text-xs">Prototipo</Badge>
         </div>
 
-        {/* Personal Subcategories Grid */}
-        <div className="p-4 rounded-b-xl border border-border bg-card/30">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {personalSubcategories.map((module, index) => (
-              <motion.div
-                key={module.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 + index * 0.05 }}
-                onClick={() => navigate(module.path)}
-                className="cursor-pointer group"
-              >
-                <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:-translate-y-1">
-                  <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${module.color} opacity-10 rounded-bl-full transition-all duration-300 group-hover:opacity-20`} />
-                  
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${module.color} text-white`}>
-                      <module.icon className="w-5 h-5" />
+          {/* Personal Subcategories Grid */}
+          <div className="p-4 rounded-b-xl border border-border bg-card/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {personalSubcategories.map((module) => (
+                <div
+                  key={module.title}
+                  onClick={() => navigate(module.path)}
+                  className="cursor-pointer group"
+                >
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 h-full transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:-translate-y-1">
+                    <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${module.color} opacity-10 rounded-bl-full transition-all duration-300 group-hover:opacity-20`} />
+
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${module.color} text-white`}>
+                        <module.icon className="w-5 h-5" />
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {module.mockCount} registros
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {module.mockCount} registros
-                    </Badge>
-                  </div>
-                  
-                  <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
-                    {module.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {module.description}
-                  </p>
-                  
-                  <div className="flex items-center text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-2">
-                    Acceder
-                    <ArrowRight className="w-3 h-3 ml-1" />
+
+                    <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
+                      {module.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {module.description}
+                    </p>
+
+                    <div className="flex items-center text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-2">
+                      Acceder
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </motion.div>
+      </AnimatedPage>
     </MainLayout>
   );
 };
