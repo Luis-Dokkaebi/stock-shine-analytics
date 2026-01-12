@@ -19,26 +19,48 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useWarehouse } from "@/context/WarehouseContext";
 import { toast } from "sonner";
+import { useParts, useAddStock } from "@/hooks/useParts";
 
 const Inventory = () => {
-  const { addStock, inventory, stockAlerts, resolveStockAlert } = useWarehouse();
+  const { stockAlerts, resolveStockAlert } = useWarehouse();
+  const { data: partsData = [], isLoading } = useParts();
+  const addStockMutation = useAddStock();
   const [sku, setSku] = useState("");
   const [qty, setQty] = useState(1);
   const [open, setOpen] = useState(false);
+  
+  // Transform parts data to inventory format
+  const inventory = partsData.map(part => ({
+    id: part.id,
+    sku: part.sku,
+    name: part.name,
+    category: part.category,
+    stock: part.stock,
+    unitCost: Number(part.unit_cost),
+    salePrice: Number(part.sale_price),
+    rotation: part.rotation as "high" | "medium" | "low",
+    daysInWarehouse: part.days_in_warehouse,
+  }));
 
   // Filter unresolved alerts
   const unresolvedAlerts = stockAlerts.filter(a => !a.resolved);
 
-  const handleReceiveStock = () => {
+  const handleReceiveStock = async () => {
     const part = inventory.find(i => i.sku.toLowerCase() === sku.toLowerCase());
     if (part) {
-      addStock(part.id, Number(qty));
-      toast.success(`Added ${qty} units to ${part.name}`);
-      setOpen(false);
-      setSku("");
-      setQty(1);
+      addStockMutation.mutate(
+        { partId: part.id, quantity: Number(qty) },
+        {
+          onSuccess: () => {
+            toast.success(`Se agregaron ${qty} unidades a ${part.name}`);
+            setOpen(false);
+            setSku("");
+            setQty(1);
+          }
+        }
+      );
     } else {
-      toast.error("SKU not found");
+      toast.error("SKU no encontrado");
     }
   };
 
@@ -121,7 +143,7 @@ const Inventory = () => {
             </p>
             <div className="space-y-2">
               {unresolvedAlerts.map(alert => {
-                const currentPart = inventory.find(p => p.id === alert.partId);
+                const currentPart = inventory.find(p => p.id === String(alert.partId));
                 const currentStock = currentPart?.stock || 0;
                 return (
                   <div 
