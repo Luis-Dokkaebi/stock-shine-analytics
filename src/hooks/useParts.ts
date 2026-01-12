@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,6 +18,27 @@ export interface DbPart {
 }
 
 export const useParts = () => {
+  const queryClient = useQueryClient();
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("parts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "parts" },
+        () => {
+          // Invalidate and refetch parts when any change occurs
+          queryClient.invalidateQueries({ queryKey: ["parts"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ["parts"],
     queryFn: async () => {
