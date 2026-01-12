@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, ArrowUpDown, Package, AlertTriangle, TrendingDown } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Package, AlertTriangle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useWarehouse } from "@/context/WarehouseContext";
+import { useParts } from "@/hooks/useParts";
 
 const rotacionBadge = {
   high: { variant: "default" as const, className: "bg-success/20 text-success border-success/30" },
@@ -14,13 +14,34 @@ const rotacionBadge = {
 
 export function InventoryTable() {
   const [search, setSearch] = useState("");
-  const { inventory } = useWarehouse();
+  const { data: partsData = [], isLoading } = useParts();
+  
+  // Transform DB data to match the expected format
+  const inventory = partsData.map(part => ({
+    id: part.id,
+    sku: part.sku,
+    name: part.name,
+    category: part.category,
+    stock: part.stock,
+    unitCost: part.unit_cost,
+    salePrice: part.sale_price,
+    rotation: (part.rotation || "medium") as "high" | "medium" | "low",
+    daysInWarehouse: part.days_in_warehouse || 0,
+  }));
   
   const filteredData = inventory.filter(item =>
     item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.sku.toLowerCase().includes(search.toLowerCase()) ||
     item.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
