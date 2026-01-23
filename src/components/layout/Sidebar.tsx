@@ -17,7 +17,8 @@ import {
   Hammer,
   Cog,
   ShoppingBag,
-  LayoutGrid
+  LayoutGrid,
+  TrendingUp
 } from "lucide-react";
 import holtmontLogo from "@/assets/holtmont-logo.png";
 
@@ -103,6 +104,30 @@ export function Sidebar() {
             <span className="font-medium">Dashboard</span>
             {location.pathname === "/" && (
               <motion.div layoutId="activeIndicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </Link>
+        </motion.div>
+
+        {/* KPIs Holtmont */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.03 }}
+        >
+          <Link
+            to="/kpis"
+            className={`
+              flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group
+              ${location.pathname === "/kpis" 
+                ? "bg-primary/10 text-primary shadow-glow" 
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+              }
+            `}
+          >
+            <TrendingUp className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${location.pathname === "/kpis" ? "text-primary" : ""}`} />
+            <span className="font-medium">KPIs Holtmont</span>
+            {location.pathname === "/kpis" && (
+              <motion.div layoutId="kpisIndicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
             )}
           </Link>
         </motion.div>
