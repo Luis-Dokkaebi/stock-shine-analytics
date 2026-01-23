@@ -16,7 +16,8 @@ import {
   Zap,
   Hammer,
   Cog,
-  ShoppingBag
+  ShoppingBag,
+  LayoutGrid
 } from "lucide-react";
 import holtmontLogo from "@/assets/holtmont-logo.png";
 
@@ -106,7 +107,30 @@ export function Sidebar() {
           </Link>
         </motion.div>
 
-        {/* Almacén General Section */}
+        {/* Catálogo de Items */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Link
+            to="/catalog"
+            className={`
+              flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group
+              ${location.pathname === "/catalog" 
+                ? "bg-primary/10 text-primary shadow-glow" 
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+              }
+            `}
+          >
+            <LayoutGrid className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${location.pathname === "/catalog" ? "text-primary" : ""}`} />
+            <span className="font-medium">Catálogo de Items</span>
+            {location.pathname === "/catalog" && (
+              <motion.div layoutId="catalogIndicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </Link>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
