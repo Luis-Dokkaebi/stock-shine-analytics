@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { 
@@ -18,9 +18,12 @@ import {
   Cog,
   ShoppingBag,
   LayoutGrid,
-  TrendingUp
+  TrendingUp,
+  LogOut
 } from "lucide-react";
 import holtmontLogo from "@/assets/holtmont-logo.png";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const almacenSubItems = [
   { icon: Wrench, label: "Zona Técnica", path: "/technician" },
@@ -49,6 +52,8 @@ const departments = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [almacenOpen, setAlmacenOpen] = useState(true);
   const [openDepartments, setOpenDepartments] = useState<Record<string, boolean>>({});
 
@@ -60,6 +65,11 @@ export function Sidebar() {
 
   const isDepartmentActive = (deptKey: string) => {
     return location.pathname.startsWith(`/departments/${deptKey}`);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   return (
@@ -297,16 +307,27 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-3">
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/50">
           <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center">
             <Warehouse className="w-4 h-4 text-primary-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Holtmont Services</p>
-            <p className="text-xs text-muted-foreground">Sistema WCS</p>
+            <p className="text-sm font-medium truncate">
+              {user?.email?.split("@")[0] || "Usuario"}
+            </p>
+            <p className="text-xs text-muted-foreground">Holtmont Services</p>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2"
+          onClick={handleSignOut}
+        >
+          <LogOut className="w-4 h-4" />
+          Cerrar Sesión
+        </Button>
       </div>
     </motion.aside>
   );
