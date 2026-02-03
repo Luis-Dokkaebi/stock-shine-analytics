@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WarehouseProvider } from "@/context/WarehouseContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import KPIsDashboard from "./pages/KPIsDashboard";
 import Inventory from "./pages/Inventory";
 import ItemCatalog from "./pages/ItemCatalog";
@@ -34,25 +36,28 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Main routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/kpis" element={<KPIsDashboard />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/catalog" element={<ItemCatalog />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/technician" element={<Technician />} />
-            <Route path="/print-order/:orNumber" element={<OrderExitSlip />} />
-            <Route path="/costs" element={<Costs />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/personal/:module" element={<PersonalControl />} />
+            {/* Public route */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Protected routes */}
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/kpis" element={<ProtectedRoute><KPIsDashboard /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+            <Route path="/catalog" element={<ProtectedRoute><ItemCatalog /></ProtectedRoute>} />
+            <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
+            <Route path="/technician" element={<ProtectedRoute><Technician /></ProtectedRoute>} />
+            <Route path="/print-order/:orNumber" element={<ProtectedRoute><OrderExitSlip /></ProtectedRoute>} />
+            <Route path="/costs" element={<ProtectedRoute><Costs /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/personal/:module" element={<ProtectedRoute><PersonalControl /></ProtectedRoute>} />
             
             {/* Department routes - each department has full functionality */}
-            <Route path="/departments/:dept/inventory" element={<DepartmentInventory />} />
-            <Route path="/departments/:dept/technician" element={<DepartmentTechnician />} />
-            <Route path="/departments/:dept/sales" element={<DepartmentSales />} />
-            <Route path="/departments/:dept/costs" element={<DepartmentCosts />} />
-            <Route path="/departments/:dept/reports" element={<DepartmentReports />} />
+            <Route path="/departments/:dept/inventory" element={<ProtectedRoute><DepartmentInventory /></ProtectedRoute>} />
+            <Route path="/departments/:dept/technician" element={<ProtectedRoute><DepartmentTechnician /></ProtectedRoute>} />
+            <Route path="/departments/:dept/sales" element={<ProtectedRoute><DepartmentSales /></ProtectedRoute>} />
+            <Route path="/departments/:dept/costs" element={<ProtectedRoute><DepartmentCosts /></ProtectedRoute>} />
+            <Route path="/departments/:dept/reports" element={<ProtectedRoute><DepartmentReports /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
